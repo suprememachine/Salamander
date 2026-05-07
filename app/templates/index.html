@@ -4,619 +4,427 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SALAMANDER MINE — Quiz Mining on Base L2</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.ethers.io/lib/ethers-5.7.2.umd.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script src="https://cdn.ethers.io/lib/ethers-5.7.2.umd.min.js"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap');
-        :root { --bg:#0a0a0f; --card:#111118; --border:#1a1a2e; --accent:#0052FF; --accent2:#00d4ff; --green:#00ff88; --red:#ff3366; --yellow:#ffaa00; }
         *{margin:0;padding:0;box-sizing:border-box}
-        body{background:var(--bg);color:#e0e0e0;font-family:'Space Grotesk',sans-serif;min-height:100vh}
+        body{background:#08080d;color:#e0e0e0;font-family:'Space Grotesk',system-ui,sans-serif;min-height:100vh}
         .mono{font-family:'JetBrains Mono',monospace}
-        @keyframes pulse-glow{0%,100%{box-shadow:0 0 20px rgba(0,255,136,.2)} 50%{box-shadow:0 0 50px rgba(0,255,136,.5)}}
-        @keyframes shake{0%,100%{transform:translateX(0)} 25%{transform:translateX(-5px)} 75%{transform:translateX(5px)}}
-        @keyframes pop-in{0%{transform:scale(.8);opacity:0} 100%{transform:scale(1);opacity:1}}
-        @keyframes timer-pulse{0%{background:#0052FF} 50%{background:#ff3366} 100%{background:#0052FF}}
+        /* ── Animations ── */
+        @keyframes pulse-glow{0%,100%{box-shadow:0 0 20px rgba(0,255,136,.15)} 50%{box-shadow:0 0 40px rgba(0,255,136,.3)}}
+        @keyframes slide-up{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+        @keyframes fade-in{from{opacity:0}to{opacity:1}}
+        .animate-in{animation:slide-up .4s ease-out both}
+        .animate-in-1{animation-delay:.05s}
+        .animate-in-2{animation-delay:.1s}
+        .animate-in-3{animation-delay:.15s}
+        .animate-in-4{animation-delay:.2s}
         .mining-active{animation:pulse-glow 2s ease-in-out infinite}
-        .shake{animation:shake .3s ease-in-out}
-        .pop-in{animation:pop-in .3s ease-out}
-        ::-webkit-scrollbar{width:6px} ::-webkit-scrollbar-track{background:var(--bg)} ::-webkit-scrollbar-thumb{background:#333;border-radius:3px}
-        .grid-bg{background-image:linear-gradient(rgba(0,82,255,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(0,82,255,.03) 1px,transparent 1px);background-size:40px 40px}
-        .swap-input{background:#0d0d14;border:1px solid #1a1a2e;border-radius:12px;padding:16px 20px;width:100%;color:white;font-size:24px;font-family:'JetBrains Mono',monospace;outline:none;transition:border-color .2s}
-        .swap-input:focus{border-color:#0052FF}
-        .swap-input::placeholder{color:#333}
-        .timer-bar{transition:width 1s linear;height:4px;border-radius:2px}
-        .question-card{background:linear-gradient(135deg,#111118 0%,#0d0d1a 100%);border:1px solid #1a1a2e;border-radius:20px;padding:32px;position:relative;overflow:hidden}
-        .question-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px}
-        .streak-fire{background:linear-gradient(90deg,#ff3366,#ffaa00,#00ff88);-webkit-background-clip:text;-webkit-text-fill-color:transparent;font-weight:bold}
-        .difficulty-badge{font-size:10px;font-weight:600;padding:2px 8px;border-radius:6px;letter-spacing:.5px}
-        .d-easy{background:rgba(0,255,136,.15);color:#00ff88}
-        .d-medium{background:rgba(0,212,255,.15);color:#00d4ff}
-        .d-hard{background:rgba(255,170,0,.15);color:#ffaa00}
+        /* ── Cards ── */
+        .stat-card{background:#12121a;border:1px solid #222235;border-radius:14px;padding:16px;text-align:center}
+        .glass-card{background:linear-gradient(135deg,#12121a 0%,#0e0e18 100%);border:1px solid #222235;border-radius:20px;padding:24px}
+        /* ── Timer ── */
+        .timer-bar{transition:width 1s linear;height:4px;border-radius:2px;background:linear-gradient(90deg,#0052FF,#00d4ff)}
+        /* ── Difficulty badges ── */
+        .d-easy{background:rgba(0,255,136,.12);color:#00ff88;border:1px solid rgba(0,255,136,.2)}
+        .d-medium{background:rgba(0,195,255,.12);color:#00c3ff;border:1px solid rgba(0,195,255,.2)}
+        .d-hard{background:rgba(255,170,0,.12);color:#ffaa00;border:1px solid rgba(255,170,0,.2)}
+        /* ── Streak ── */
+        .streak-fire{background:linear-gradient(90deg,#ff3366,#ffaa00);-webkit-background-clip:text;-webkit-text-fill-color:transparent;font-weight:bold}
+        /* ── Question types ── */
         .type-math{color:#00d4ff} .type-pattern{color:#bb86fc} .type-logic{color:#00ff88}
         .type-word_math{color:#ffaa00} .type-binary{color:#ff3366} .type-trivia{color:#03dac6}
+        /* ── Scrollbar ── */
+        ::-webkit-scrollbar{width:5px} ::-webkit-scrollbar-track{background:#08080d} ::-webkit-scrollbar-thumb{background:#333;border-radius:3px}
+        /* ── Button ── */
+        .btn-primary{background:linear-gradient(135deg,#0052FF,#0040cc);color:#fff;border:none;border-radius:14px;padding:14px 28px;font-weight:600;font-size:15px;cursor:pointer;transition:all .2s}
+        .btn-primary:hover{transform:translateY(-1px);box-shadow:0 4px 20px rgba(0,82,255,.3)}
+        .btn-primary:active{transform:scale(.98)}
+        .btn-start{background:linear-gradient(135deg,#00c853,#009624);color:#fff;border:none;border-radius:14px;padding:16px 32px;font-weight:700;font-size:17px;cursor:pointer;transition:all .2s}
+        .btn-start:hover{transform:translateY(-2px);box-shadow:0 6px 30px rgba(0,200,83,.3)}
+        .btn-submit{background:linear-gradient(135deg,#0052FF,#0040cc);color:#fff;border:none;border-radius:12px;padding:14px 24px;font-weight:700;font-size:16px;cursor:pointer;transition:all .2s;min-width:100px}
+        .btn-submit:hover{transform:scale(1.02)}
+        /* ── Inputs ── */
+        .quiz-input{background:#0d0d14;border:2px solid #2a2a40;border-radius:14px;padding:14px 18px;width:100%;color:#fff;font-size:20px;font-family:'JetBrains Mono',monospace;outline:none;transition:border-color .2s}
+        .quiz-input:focus{border-color:#0052FF}
+        .quiz-input::placeholder{color:#444}
+        /* ── Swap ── */
+        .swap-input{background:#0d0d14;border:2px solid #2a2a40;border-radius:12px;padding:14px 18px;width:100%;color:#fff;font-size:22px;font-family:'JetBrains Mono',monospace;outline:none;transition:border-color .2s}
+        .swap-input:focus{border-color:#0052FF}
+        .swap-input::placeholder{color:#444}
     </style>
 </head>
-<body class="grid-bg">
-<div x-data="app()" x-init="init()">
-    <!-- Header -->
-    <header class="border-b border-[#1a1a2e] px-6 py-4">
-        <div class="max-w-6xl mx-auto flex items-center justify-between">
-            <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-lg bg-[#0052FF] flex items-center justify-center font-bold text-white text-lg">🧠</div>
-                <div>
-                    <h1 class="text-xl font-bold tracking-tight">SALAMANDER MINE</h1>
-                    <p class="text-xs text-gray-500 mono">Quiz Mining on Base L2</p>
-                </div>
-            </div>
-            <div class="flex items-center gap-4">
-                <div class="text-right hidden sm:block">
-                    <div class="text-xs text-gray-500">Network</div>
-                    <div class="text-sm font-semibold text-[#0052FF]">Base L2</div>
-                </div>
-                <button @click="connectWallet()" class="px-4 py-2 rounded-lg text-sm font-semibold transition-all"
-                    :class="wallet ? 'bg-green-500/10 text-green-400 border border-green-500/30' : 'bg-[#0052FF] text-white hover:bg-[#0040cc]'">
-                    <span x-text="wallet ? wallet.slice(0,6)+'...'+wallet.slice(-4) : 'Connect Wallet'"></span>
-                </button>
+<body>
+<div x-data="app()" x-init="init()" style="max-width:700px;margin:0 auto;padding:0 16px;">
+
+    <!-- ═══ HEADER ═══ -->
+    <header style="display:flex;align-items:center;justify-content:space-between;padding:20px 0;border-bottom:1px solid #1a1a2e;margin-bottom:20px;">
+        <div style="display:flex;align-items:center;gap:12px;">
+            <div style="width:42px;height:42px;border-radius:12px;background:linear-gradient(135deg,#0052FF,#0040cc);display:flex;align-items:center;justify-content:center;font-size:22px;">🦎</div>
+            <div>
+                <div style="font-size:18px;font-weight:700;letter-spacing:-.3px;">SALAMANDER MINE</div>
+                <div style="font-size:11px;color:#666;" class="mono">Quiz Mining on Base L2</div>
             </div>
         </div>
+        <button @click="connectWallet()" style="border-radius:12px;font-size:13px;font-weight:600;padding:8px 16px;border:1px solid #2a2a40;background:#12121a;color:#999;cursor:pointer;transition:all .2s;"
+            :style="wallet ? 'color:#00ff88;border-color:rgba(0,255,136,.3);background:rgba(0,255,136,.05)' : ''">
+            <span x-text="wallet ? wallet.slice(0,6)+'...'+wallet.slice(-4) : '🔗 Connect'"></span>
+        </button>
     </header>
 
-    <!-- Tab Nav -->
-    <div class="max-w-6xl mx-auto px-4 mt-6">
-        <div class="flex gap-1 bg-[#111118] border border-[#1a1a2e] rounded-xl p-1 w-fit">
-            <button @click="tab='mine'" class="px-6 py-2 rounded-lg text-sm font-semibold transition-all"
-                :class="tab==='mine' ? 'bg-[#0052FF] text-white' : 'text-gray-500 hover:text-white'">🧠 Quiz Mining</button>
-            <button @click="tab='swap'" class="px-6 py-2 rounded-lg text-sm font-semibold transition-all"
-                :class="tab==='swap' ? 'bg-[#0052FF] text-white' : 'text-gray-500 hover:text-white'">🔄 Swap</button>
+    <!-- ═══ TABS ═══ -->
+    <div style="display:flex;gap:6px;margin-bottom:24px;">
+        <button @click="tab='mine'" style="flex:1;padding:12px;border-radius:12px;font-weight:600;font-size:14px;border:1px solid transparent;cursor:pointer;transition:all .2s;"
+            :style="tab==='mine' ? 'background:linear-gradient(135deg,#0052FF,#0040cc);color:#fff;border-color:transparent;' : 'background:#12121a;color:#666;border-color:#222235;'">🧠 Quiz Mining</button>
+        <button @click="tab='swap'" style="flex:1;padding:12px;border-radius:12px;font-weight:600;font-size:14px;border:1px solid transparent;cursor:pointer;transition:all .2s;"
+            :style="tab==='swap' ? 'background:linear-gradient(135deg,#0052FF,#0040cc);color:#fff;border-color:transparent;' : 'background:#12121a;color:#666;border-color:#222235;'">🔄 Swap</button>
+    </div>
+
+    <!-- ═══ MINING TAB ═══ -->
+    <div x-show="tab==='mine'">
+
+        <!-- Stats Row -->
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px;" class="animate-in animate-in-1">
+            <div class="stat-card">
+                <div style="font-size:10px;color:#666;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">Mined</div>
+                <div style="font-size:22px;font-weight:700;color:#00c3ff;" class="mono" x-text="totalMined.toFixed(4)"></div>
+                <div style="font-size:10px;color:#555;" class="mono">SLAM</div>
+            </div>
+            <div class="stat-card">
+                <div style="font-size:10px;color:#666;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">Solved</div>
+                <div style="font-size:22px;font-weight:700;color:#00ff88;" class="mono" x-text="blocksMined"></div>
+            </div>
+            <div class="stat-card">
+                <div style="font-size:10px;color:#666;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">Streak 🔥</div>
+                <div style="font-size:22px;font-weight:700;" class="mono streak-fire" x-text="streak + 'x'"></div>
+            </div>
+        </div>
+
+        <!-- Difficulty + Accuracy Bar -->
+        <div style="display:flex;gap:10px;margin-bottom:20px;" class="animate-in animate-in-2">
+            <div style="flex:1;display:flex;align-items:center;gap:8px;padding:10px 14px;border-radius:12px;background:#12121a;border:1px solid #222235;">
+                <span style="font-size:10px;color:#666;">DIFFICULTY</span>
+                <span class="mono" style="font-size:13px;font-weight:600;" :class="'d-'+difficultyName.toLowerCase()" x-text="difficultyName"></span>
+                <span style="font-size:11px;color:#666;margin-left:auto;" class="mono" x-text="'×'+streakMultiplier.toFixed(1)"></span>
+            </div>
+            <div style="flex:1;display:flex;align-items:center;gap:8px;padding:10px 14px;border-radius:12px;background:#12121a;border:1px solid #222235;">
+                <span style="font-size:10px;color:#666;">ACCURACY</span>
+                <span style="font-size:16px;font-weight:700;margin-left:auto;" class="mono" :class="accuracy>=70?'color:#00ff88':accuracy>=40?'color:#ffaa00':'color:#ff3366'" x-text="accuracy+'%'"></span>
+            </div>
+        </div>
+
+        <!-- ═══ QUESTION CARD ═══ -->
+        <div class="glass-card animate-in animate-in-3" style="margin-bottom:20px;" :class="isMining ? 'mining-active' : ''">
+
+            <!-- IDLE STATE -->
+            <div x-show="!isMining && !lastResult" class="text-center" style="padding:30px 0;">
+                <div style="font-size:52px;margin-bottom:12px;">🧠</div>
+                <h2 style="font-size:22px;font-weight:700;margin-bottom:8px;">Quiz Mining</h2>
+                <p style="color:#666;font-size:14px;line-height:1.6;margin-bottom:24px;">
+                    Jawab pertanyaan untuk mining SLAM tokens.<br>
+                    Jawab cepat = lebih banyak reward. Streak = multiplier!
+                </p>
+                <button @click="startMining()" :disabled="!wallet" class="btn-start" style="width:100%;"
+                    :style="!wallet ? 'opacity:.4;cursor:not-allowed' : ''" x-text="wallet ? '🧠 START MINING' : '🔗 Connect Wallet dulu'"></button>
+            </div>
+
+            <!-- ACTIVE QUESTION -->
+            <div x-show="isMining" style="animation:fade-in .3s;">
+                <!-- Timer -->
+                <div style="background:#1a1a2e;border-radius:4px;height:4px;margin-bottom:16px;overflow:hidden;">
+                    <div class="timer-bar" :style="'width:'+timeLeftPercent+'%+'"
+                        :style="timeLeftPercent>50?'background:linear-gradient(90deg,#0052FF,#00c3ff)':timeLeftPercent>20?'background:linear-gradient(90deg,#ffaa00,#ff6600)':'background:linear-gradient(90deg,#ff3366,#ff0033)'"></div>
+                </div>
+
+                <!-- Meta Row -->
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+                    <div style="display:flex;gap:6px;align-items:center;">
+                        <span class="mono" :class="'d-'+difficultyName.toLowerCase()" style="font-size:10px;padding:3px 8px;border-radius:6px;" x-text="difficultyName"></span>
+                        <span class="mono" :class="'type-'+questionType" style="font-size:11px;opacity:.7;" x-text="questionType"></span>
+                    </div>
+                    <div style="display:flex;gap:12px;align-items:center;">
+                        <span style="font-size:18px;font-weight:700;" class="mono" :class="timeLeft<=5?'color:#ff3366':''" x-text="timeLeft+'s'"></span>
+                        <span style="font-size:13px;" :class="streak>=3?'streak-fire':'color:#555'" x-text="streak>0?'🔥 ×'+streakMultiplier.toFixed(1):''"></span>
+                    </div>
+                </div>
+
+                <!-- Question -->
+                <div style="background:#0a0a10;border:1px solid #1a1a2e;border-radius:14px;padding:20px;margin-bottom:16px;">
+                    <div style="font-size:18px;line-height:1.6;font-weight:500;" x-text="currentQuestion"></div>
+                    <div x-show="questionHint" style="margin-top:8px;font-size:13px;color:#666;font-style:italic;" x-text="'💡 ' + questionHint"></div>
+                </div>
+
+                <!-- Last Result -->
+                <div x-show="lastResult" style="border-radius:12px;padding:12px;margin-bottom:14px;font-size:13px;display:flex;align-items:center;gap:8px;animation:slide-up .3s;"
+                    :style="lastResult?.correct ? 'background:rgba(0,255,136,.08);border:1px solid rgba(0,255,136,.2)' : 'background:rgba(255,51,102,.08);border:1px solid rgba(255,51,102,.2)'">
+                    <span x-text="lastResult?.correct ? '✅' : '❌'"></span>
+                    <span x-text="lastResult?.correct ? '+' + lastResult?.reward?.toFixed(6) + ' SLAM' : 'Jawaban: ' + lastResult?.correct_answer"></span>
+                    <span class="mono" style="color:#666;margin-left:auto;" x-text="lastResult?.time_taken?.toFixed(1)+'s'"></span>
+                </div>
+
+                <!-- Answer Input -->
+                <div style="display:flex;gap:10px;" @keydown.enter="submitAnswer()">
+                    <input type="text" x-model="userAnswer" class="quiz-input" style="flex:1;" placeholder="Ketik jawaban..." :disabled="submitting">
+                    <button @click="submitAnswer()" class="btn-submit" :disabled="submitting || !userAnswer.trim()"
+                        :style="(!userAnswer.trim()||submitting) ? 'opacity:.4;cursor:not-allowed' : ''">
+                        <span x-text="submitting ? '...' : '✓'"></span>
+                    </button>
+                </div>
+
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;">
+                    <button @click="stopMining()" style="background:none;border:none;color:#555;font-size:13px;cursor:pointer;" onmouseover="this.style.color='#ff3366'" onmouseout="this.style.color='#555'">⏹ Stop</button>
+                    <span style="font-size:11px;color:#555;" class="mono" x-text="'Reward: '+currentReward.toFixed(4)+' SLAM'"></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══ REWARDS + LEADERBOARD ═══ -->
+        <div class="glass-card animate-in animate-in-4" style="margin-bottom:20px;">
+            <h3 style="font-size:16px;font-weight:700;margin-bottom:14px;">⚡ Rewards</h3>
+            <div style="display:flex;flex-direction:column;gap:8px;">
+                <div style="display:flex;justify-content:space-between;font-size:13px;"><span style="color:#888;">Easy (30s)</span><span class="mono" style="color:#00ff88;">0.01 SLAM</span></div>
+                <div style="display:flex;justify-content:space-between;font-size:13px;"><span style="color:#888;">Medium (25s)</span><span class="mono" style="color:#00c3ff;">0.025 SLAM</span></div>
+                <div style="display:flex;justify-content:space-between;font-size:13px;"><span style="color:#888;">Hard (20s)</span><span class="mono" style="color:#ffaa00;">0.05 SLAM</span></div>
+                <hr style="border:none;border-top:1px solid #1a1a2e;margin:4px 0;">
+                <div style="display:flex;justify-content:space-between;font-size:13px;"><span style="color:#888;">Time Bonus</span><span class="mono" style="color:#bb86fc;">+50-200%</span></div>
+                <div style="display:flex;justify-content:space-between;font-size:13px;"><span style="color:#888;">Streak ×3 max</span><span class="mono" style="color:#ffaa00;">×1.0→×3.0</span></div>
+                <hr style="border:none;border-top:1px solid #1a1a2e;margin:4px 0;">
+                <div style="font-size:11px;color:#555;line-height:1.6;">
+                    • 5 benar berturut → difficulty naik<br>
+                    • Salah → streak reset, difficulty turun<br>
+                    • Semakin cepat jawab = semakin banyak reward
+                </div>
+            </div>
+        </div>
+
+        <!-- Leaderboard -->
+        <div class="glass-card animate-in animate-in-4" style="margin-bottom:40px;">
+            <h3 style="font-size:16px;font-weight:700;margin-bottom:14px;">🏆 Leaderboard</h3>
+            <div x-show="leaderboard.length===0" style="text-align:center;color:#444;font-size:13px;padding:20px;">Belum ada data</div>
+            <div style="display:flex;flex-direction:column;gap:6px;">
+                <template x-for="(m,i) in leaderboard" :key="m.wallet">
+                    <div style="display:flex;align-items:center;gap:10px;padding:10px;border-radius:10px;font-size:13px;"
+                        :style="m.wallet===wallet?.toLowerCase() ? 'background:rgba(0,82,255,.08);border:1px solid rgba(0,82,255,.15)' : 'background:transparent'">
+                        <span style="width:22px;text-align:center;font-weight:700;" :class="i===0?'color:#ffd700':i===1?'color:#c0c0c0':i===2?'color:#cd7f32':'color:#555'" x-text="'#'+(i+1)"></span>
+                        <span class="mono" style="color:#888;flex:1;overflow:hidden;text-overflow:ellipsis;" x-text="m.wallet.slice(0,6)+'...'+m.wallet.slice(-4)"></span>
+                        <div style="text-align:right;">
+                            <div class="mono" style="font-weight:600;color:#00c3ff;" x-text="m.total_mined.toFixed(2)"></div>
+                        </div>
+                    </div>
+                </template>
+            </div>
         </div>
     </div>
 
-    <main class="max-w-6xl mx-auto px-4 py-6">
-
-        <!-- ═══ QUIZ MINING TAB ═══ -->
-        <div x-show="tab==='mine'">
-            <!-- Stats Bar -->
-            <div class="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-6">
-                <div class="bg-[#111118] border border-[#1a1a2e] rounded-xl p-4">
-                    <div class="text-xs text-gray-500 mb-1">Total Mined</div>
-                    <div class="text-2xl font-bold mono text-[#00d4ff]" x-text="totalMined.toFixed(4)"></div>
-                </div>
-                <div class="bg-[#111118] border border-[#1a1a2e] rounded-xl p-4">
-                    <div class="text-xs text-gray-500 mb-1">Solved</div>
-                    <div class="text-2xl font-bold mono text-green-400" x-text="blocksMined"></div>
-                </div>
-                <div class="bg-[#111118] border border-[#1a1a2e] rounded-xl p-4">
-                    <div class="text-xs text-gray-500 mb-1">Streak 🔥</div>
-                    <div class="text-2xl font-bold mono streak-fire" x-text="streak + 'x'"></div>
-                </div>
-                <div class="bg-[#111118] border border-[#1a1a2e] rounded-xl p-4">
-                    <div class="text-xs text-gray-500 mb-1">Accuracy</div>
-                    <div class="text-2xl font-bold mono" :class="accuracy >= 70 ? 'text-green-400' : accuracy >= 40 ? 'text-yellow-400' : 'text-red-400'" x-text="accuracy + '%'"></div>
-                </div>
-                <div class="bg-[#111118] border border-[#1a1a2e] rounded-xl p-4">
-                    <div class="text-xs text-gray-500 mb-1">Difficulty</div>
-                    <div class="flex items-center gap-2">
-                        <span class="difficulty-badge" :class="'d-'+difficultyName.toLowerCase()" x-text="difficultyName"></span>
-                        <span class="text-xs text-gray-500 mono" x-text="'×'+streakMultiplier.toFixed(1)"></span>
-                    </div>
-                </div>
+    <!-- ═══ SWAP TAB ═══ -->
+    <div x-show="tab==='swap'" style="margin-bottom:40px;">
+        <!-- Pool Info -->
+        <div class="glass-card" style="margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;">
+            <div>
+                <div style="font-size:10px;color:#666;text-transform:uppercase;">BMINE/ETH Price</div>
+                <div style="font-size:18px;font-weight:700;" class="mono" x-text="swapPrice ? swapPrice.toFixed(4) : '—'"></div>
             </div>
-
-            <div class="grid lg:grid-cols-3 gap-6">
-                <div class="lg:col-span-2 space-y-6">
-                    <!-- Question Card -->
-                    <div class="question-card transition-all duration-300"
-                         :class="isMining ? 'mining-active' : ''"
-                         :style="'--q-border: ' + (isMining ? '#00ff88' : '#1a1a2e')">
-
-                        <!-- IDLE STATE -->
-                        <div x-show="!isMining && !lastResult" class="text-center py-8">
-                            <div class="text-6xl mb-4">🧠</div>
-                            <h2 class="text-2xl font-bold mb-2">Quiz Mining</h2>
-                            <p class="text-gray-500 mb-6">Answer questions to mine SLAM tokens.<br>Faster answers = more rewards. Streaks = multipliers!</p>
-                            <button @click="startMining()" :disabled="!wallet"
-                                class="px-8 py-4 rounded-xl font-bold text-lg transition-all"
-                                :class="wallet ? 'bg-green-500/20 text-green-400 border border-green-500/50 hover:bg-green-500/30 hover:border-green-400' : 'bg-gray-800 text-gray-600 cursor-not-allowed'"
-                                x-text="wallet ? '🧠 START MINING' : 'Connect Wallet to Start'"></button>
-                        </div>
-
-                        <!-- QUESTION STATE -->
-                        <div x-show="isMining" class="pop-in">
-                            <!-- Timer bar -->
-                            <div class="bg-[#1a1a2e] rounded-full h-1 mb-6 overflow-hidden">
-                                <div class="timer-bar" :style="'width:'+timeLeftPercent+'%'" :class="timeLeftPercent > 50 ? 'bg-[#0052FF]' : timeLeftPercent > 20 ? 'bg-[#ffaa00]' : 'bg-[#ff3366]'"></div>
-                            </div>
-
-                            <div class="flex items-center justify-between mb-4">
-                                <div class="flex items-center gap-2">
-                                    <span class="difficulty-badge" :class="'d-'+difficultyName.toLowerCase()" x-text="difficultyName"></span>
-                                    <span class="text-xs mono type-" :class="'type-'+questionType" x-text="questionType"></span>
-                                </div>
-                                <div class="flex items-center gap-4">
-                                    <div class="text-sm text-gray-500">
-                                        <span class="mono" :class="timeLeft <= 5 ? 'text-red-400 animate-pulse' : ''" x-text="timeLeft + 's'"></span>
-                                    </div>
-                                    <div class="text-sm" :class="streak >= 3 ? 'streak-fire' : 'text-gray-500'" x-text="streak > 0 ? '🔥 ×'+streakMultiplier.toFixed(1) : ''"></div>
-                                </div>
-                            </div>
-
-                            <!-- Question -->
-                            <div class="bg-black/30 rounded-xl p-6 mb-6">
-                                <div class="text-xl font-medium leading-relaxed" x-text="currentQuestion"></div>
-                                <div x-show="questionHint" class="mt-3 text-sm text-gray-500 italic" x-text="'💡 ' + questionHint"></div>
-                            </div>
-
-                            <!-- Previous Result -->
-                            <div x-show="lastResult" class="mb-4 p-3 rounded-xl pop-in" :class="lastResult?.correct ? 'bg-green-500/10 border border-green-500/30' : 'bg-red-500/10 border border-red-500/30'">
-                                <div class="flex items-center gap-2 text-sm">
-                                    <span x-text="lastResult?.correct ? '✅' : '❌'"></span>
-                                    <span x-text="lastResult?.correct ? lastResult?.reward?.toFixed(6) + ' SLAM' : 'Correct: ' + lastResult?.correct_answer"></span>
-                                    <span class="text-gray-500 ml-auto mono" x-text="lastResult?.time_taken?.toFixed(1)+'s'"></span>
-                                </div>
-                            </div>
-
-                            <!-- Answer Input -->
-                            <div class="flex gap-3" @keydown.enter="submitAnswer()">
-                                <input type="text" x-model="userAnswer" @input="userAnswer=$event.target.value" autofocus
-                                    class="swap-input flex-1 !text-lg !py-3" placeholder="Type your answer..."
-                                    :disabled="submitting">
-                                <button @click="submitAnswer()" :disabled="submitting || !userAnswer.trim()"
-                                    class="px-6 py-3 rounded-xl font-bold transition-all"
-                                    :class="(userAnswer.trim() && !submitting) ? 'bg-[#0052FF] text-white hover:bg-[#0040cc]' : 'bg-gray-800 text-gray-600 cursor-not-allowed'">
-                                    <span x-text="submitting ? '...' : 'Submit'"></span>
-                                </button>
-                            </div>
-
-                            <div class="mt-4 flex justify-between items-center">
-                                <button @click="stopMining()" class="text-sm text-gray-500 hover:text-red-400 transition-colors">
-                                    ⏹ Stop Mining
-                                </button>
-                                <span class="text-xs text-gray-600 mono" x-text="'Reward: '+currentReward.toFixed(4)+' SLAM'"></span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Sidebar -->
-                <div class="space-y-6">
-                    <!-- Streak & Rewards -->
-                    <div class="bg-[#111118] border border-[#1a1a2e] rounded-2xl p-6">
-                        <h2 class="text-lg font-bold mb-4">⚡ Rewards</h2>
-                        <div class="space-y-3">
-                            <div class="flex justify-between text-sm">
-                                <span class="text-gray-500">Easy</span>
-                                <span class="mono text-green-400">0.01 SLAM</span>
-                            </div>
-                            <div class="flex justify-between text-sm">
-                                <span class="text-gray-500">Medium</span>
-                                <span class="mono text-[#00d4ff]">0.025 SLAM</span>
-                            </div>
-                            <div class="flex justify-between text-sm">
-                                <span class="text-gray-500">Hard</span>
-                                <span class="mono text-[#ffaa00]">0.05 SLAM</span>
-                            </div>
-                            <hr class="border-[#1a1a2e]">
-                            <div class="flex justify-between text-sm">
-                                <span class="text-gray-500">Time Bonus</span>
-                                <span class="mono text-[#bb86fc]">+50-200%</span>
-                            </div>
-                            <div class="flex justify-between text-sm">
-                                <span class="text-gray-500">Streak ×3 max</span>
-                                <span class="mono text-[#ffaa00]">×1.0 → ×3.0</span>
-                            </div>
-                            <hr class="border-[#1a1a2e]">
-                            <div class="text-xs text-gray-500">
-                                • Upgrade after 5 correct in a row<br>
-                                • Degrade after wrong answer<br>
-                                • Wrong = streak reset
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Leaderboard -->
-                    <div class="bg-[#111118] border border-[#1a1a2e] rounded-2xl p-6">
-                        <h2 class="text-lg font-bold mb-4">🏆 Leaderboard</h2>
-                        <div class="space-y-2">
-                            <template x-for="(m,i) in leaderboard" :key="m.wallet">
-                                <div class="flex items-center gap-3 text-sm py-2" :class="m.wallet===wallet?.toLowerCase() && 'bg-[#0052FF]/10 rounded-lg px-2 -mx-2'">
-                                    <span class="w-6 text-center font-bold" :class="i===0?'text-yellow-400':i===1?'text-gray-400':i===2?'text-orange-400':'text-gray-600'" x-text="'#'+(i+1)"></span>
-                                    <span class="mono text-gray-400 flex-1 truncate" x-text="m.wallet.slice(0,6)+'...'+m.wallet.slice(-4)"></span>
-                                    <div class="text-right">
-                                        <div class="mono text-[#00d4ff] font-bold" x-text="m.total_mined.toFixed(2)"></div>
-                                        <div class="text-[8px] text-gray-500 mono" x-text="m.blocks_mined+' solved'"></div>
-                                    </div>
-                                </div>
-                            </template>
-                        </div>
-                    </div>
-                </div>
+            <div style="text-align:right;">
+                <div style="font-size:10px;color:#666;text-transform:uppercase;">Pool</div>
+                <div style="font-size:13px;" class="mono"><span style="color:#0052FF;" x-text="poolETH ? poolETH.toFixed(3)+' ETH' : '—'"></span></div>
+                <div style="font-size:13px;" class="mono"><span style="color:#00c3ff;" x-text="poolToken ? formatNum(poolToken)+' SLAM' : ''"></span></div>
             </div>
         </div>
 
-        <!-- ═══ SWAP TAB ═══ -->
-        <div x-show="tab==='swap'" class="max-w-lg mx-auto">
-            <div class="bg-[#111118] border border-[#1a1a2e] rounded-xl p-4 mb-6 flex justify-between items-center">
-                <div>
-                    <div class="text-xs text-gray-500">SLAM / ETH</div>
-                    <div class="text-xl font-bold mono" x-text="swapPrice ? swapPrice.toFixed(6) : '—'"></div>
-                </div>
-                <div>
-                    <div class="text-xs text-gray-500">Pool</div>
-                    <div class="text-sm mono text-[#0052FF]" x-text="poolETH ? poolETH.toFixed(4)+' ETH' : 'Empty'"></div>
-                    <div class="text-sm mono text-[#00d4ff]" x-text="poolToken ? formatNum(poolToken)+' SLAM' : ''"></div>
+        <div class="glass-card">
+            <h3 style="font-size:16px;font-weight:700;margin-bottom:16px;">🔄 Swap Tokens</h3>
+
+            <!-- From -->
+            <div style="margin-bottom:10px;">
+                <div style="font-size:11px;color:#666;margin-bottom:6px;">FROM</div>
+                <div style="display:flex;gap:8px;">
+                    <input type="number" x-model="swapAmount" class="swap-input" style="flex:1;" step="0.001" min="0" placeholder="0.0" @input="calcSwapOutput()">
+                    <button @click="swapType='eth'" style="padding:10px 16px;border-radius:12px;font-weight:700;font-size:13px;border:none;cursor:pointer;transition:all .2s;"
+                        :style="swapType==='eth' ? 'background:#0052FF;color:#fff' : 'background:#1a1a2e;color:#666'">ETH</button>
                 </div>
             </div>
 
-            <div class="bg-[#111118] border border-[#1a1a2e] rounded-2xl p-6">
-                <h2 class="text-lg font-bold mb-4">Swap Tokens</h2>
-                <div class="mb-2">
-                    <label class="text-xs text-gray-500 mb-2 block">From</label>
-                    <div class="flex items-center gap-3">
-                        <input type="number" x-model="swapAmount" step="0.0001" min="0" placeholder="0.0"
-                            class="swap-input flex-1" @input="calcSwapOutput()">
-                        <button @click="swapType='eth'" class="px-4 py-3 rounded-xl font-bold text-sm transition-all whitespace-nowrap"
-                            :class="swapType==='eth' ? 'bg-[#0052FF] text-white' : 'bg-[#1a1a2e] text-gray-400 hover:bg-[#252540]'">
-                            <span class="mono">ETH</span>
-                        </button>
-                    </div>
-                </div>
-                <div class="flex justify-center my-2">
-                    <button @click="swapDirection()" class="w-10 h-10 rounded-xl bg-[#1a1a2e] border border-[#2a2a44] flex items-center justify-center text-gray-400 hover:text-white hover:border-[#0052FF] transition-all">↕</button>
-                </div>
-                <div class="mb-4">
-                    <label class="text-xs text-gray-500 mb-2 block">To</label>
-                    <div class="flex items-center gap-3">
-                        <div class="swap-input flex-1 text-[#00d4ff] !text-xl" x-text="swapOutput || '0.0'"></div>
-                        <button @click="swapType='bmine'" class="px-4 py-3 rounded-xl font-bold text-sm transition-all whitespace-nowrap"
-                            :class="swapType==='bmine' ? 'bg-[#0052FF] text-white' : 'bg-[#1a1a2e] text-gray-400 hover:bg-[#252540]'">
-                            <span class="mono">SLAM</span>
-                        </button>
-                    </div>
-                </div>
-                <div class="flex items-center gap-2 mb-4 text-xs">
-                    <span class="text-gray-500">Fee: 0.3%</span>
-                    <span class="text-gray-600">|</span>
-                    <span class="text-gray-500">Slippage:</span>
-                    <template x-for="s in [0.1, 0.5, 1.0]" :key="s">
-                        <button @click="slippage=s" class="px-2 py-1 rounded-lg mono"
-                            :class="slippage===s ? 'bg-[#0052FF]/20 text-[#0052FF]' : 'text-gray-500 hover:text-white'" x-text="s+'%'"></button>
-                    </template>
-                </div>
-                <div x-show="swapType==='bmine' && bmineAllowance < swapAmountRaw">
-                    <button @click="approveSwap()" :disabled="!wallet"
-                        class="w-full py-4 rounded-xl font-bold text-lg transition-all mb-3"
-                        :class="wallet ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/50 hover:bg-yellow-500/30' : 'bg-gray-800 text-gray-600'">
-                        ✋ Approve SLAM
-                    </button>
-                </div>
-                <button @click="executeSwap()" :disabled="!wallet || !swapAmount || parseFloat(swapAmount)<=0"
-                    class="w-full py-4 rounded-xl font-bold text-lg transition-all"
-                    :class="(wallet && swapAmount > 0) ? 'bg-[#0052FF] text-white hover:bg-[#0040cc]' : 'bg-gray-800 text-gray-600 cursor-not-allowed'">
-                    <span x-text="!wallet ? 'Connect Wallet' : (swapType==='eth' ? 'Swap ETH → SLAM' : 'Swap SLAM → ETH')"></span>
-                </button>
-                <div class="mt-4 flex justify-between text-sm text-gray-500">
-                    <span>Your Balance</span>
-                    <div class="text-right mono">
-                        <span class="text-[#00d4ff]" x-text="bmineBalance || '0'"></span> SLAM
-                        <span class="text-gray-600 mx-1">|</span>
-                        <span class="text-white" x-text="ethBalance || '0'"></span> ETH
-                    </div>
+            <!-- Swap Direction -->
+            <div style="text-align:center;margin:8px 0;">
+                <button @click="swapDirection()" style="width:36px;height:36px;border-radius:10px;background:#1a1a2e;border:1px solid #2a2a40;color:#666;cursor:pointer;font-size:16px;transition:all .2s;"
+                    onmouseover="this.style.color='#fff';this.style.borderColor='#0052FF'" onmouseout="this.style.color='#666';this.style.borderColor='#2a2a40'">↕</button>
+            </div>
+
+            <!-- To -->
+            <div style="margin-bottom:16px;">
+                <div style="font-size:11px;color:#666;margin-bottom:6px;">TO</div>
+                <div style="display:flex;gap:8px;">
+                    <div class="swap-input" style="flex:1;color:#00c3ff;font-size:20px;" x-text="swapOutput || '0.0'"></div>
+                    <button @click="swapType='bmine'" style="padding:10px 16px;border-radius:12px;font-weight:700;font-size:13px;border:none;cursor:pointer;transition:all .2s;"
+                        :style="swapType==='bmine' ? 'background:#0052FF;color:#fff' : 'background:#1a1a2e;color:#666'">SLAM</button>
                 </div>
             </div>
 
-            <div class="bg-[#111118] border border-[#1a1a2e] rounded-2xl p-6 mt-6">
-                <h2 class="text-lg font-bold mb-4">Swap History</h2>
-                <div x-show="swapHistory.length===0" class="text-gray-600 text-sm text-center py-6">No swaps yet</div>
-                <div class="space-y-2">
-                    <template x-for="tx in swapHistory" :key="tx.hash">
-                        <div class="bg-black/30 rounded-lg p-3 flex items-center justify-between text-sm">
-                            <div>
-                                <span class="px-2 py-0.5 rounded text-xs font-bold" :class="tx.direction==='buy' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'"
-                                    x-text="tx.direction==='buy' ? 'BUY' : 'SELL'"></span>
-                                <span class="ml-2 mono text-gray-400" x-text="tx.amount + ' → ' + tx.output"></span>
-                            </div>
-                            <a :href="'https://basescan.org/tx/' + tx.hash" target="_blank" class="text-gray-500 hover:text-white mono text-xs" x-text="tx.hash.slice(0,10)+'...'"></a>
-                        </div>
-                    </template>
-                </div>
+            <!-- Slippage -->
+            <div style="display:flex;gap:6px;margin-bottom:16px;font-size:11px;">
+                <span style="color:#666;">Fee 0.3%</span>
+                <span style="color:#333;">•</span>
+                <span style="color:#666;">Slippage</span>
+                <template x-for="s in [0.1,0.5,1.0]" :key="s">
+                    <button @click="slippage=s" style="padding:3px 8px;border-radius:6px;border:none;cursor:pointer;font-size:11px;font-family:monospace;transition:all .2s;"
+                        :style="slippage===s ? 'background:rgba(0,82,255,.15);color:#0052FF' : 'background:transparent;color:#666'" x-text="s+'%'"></button>
+                </template>
+            </div>
+
+            <!-- Approve -->
+            <div x-show="swapType==='bmine' && bmineAllowance < swapAmountRaw" style="margin-bottom:10px;">
+                <button @click="approveSwap()" :disabled="!wallet" class="btn-primary" style="width:100%;background:linear-gradient(135deg,#ffaa00,#ff8800);">✋ Approve SLAM</button>
+            </div>
+
+            <!-- Swap Button -->
+            <button @click="executeSwap()" :disabled="!wallet || !swapAmount || parseFloat(swapAmount)<=0" class="btn-primary" style="width:100%;"
+                :style="(!wallet || swapAmount<=0) ? 'opacity:.4;cursor:not-allowed' : ''" x-text="!wallet ? '🔗 Connect Wallet' : (swapType==='eth' ? 'Swap ETH → SLAM' : 'Swap SLAM → ETH')"></button>
+
+            <!-- Balance -->
+            <div style="display:flex;justify-content:space-between;font-size:12px;color:#666;margin-top:12px;">
+                <span>Balance</span>
+                <span class="mono"><span style="color:#00c3ff;" x-text="bmineBalance || '0'"></span> SLAM · <span style="color:#fff;" x-text="ethBalance || '0'"></span> ETH</span>
             </div>
         </div>
-    </main>
+
+        <!-- Swap History -->
+        <div class="glass-card" style="margin-top:16px;">
+            <h3 style="font-size:14px;font-weight:600;margin-bottom:12px;">History</h3>
+            <div x-show="swapHistory.length===0" style="text-align:center;color:#444;font-size:13px;padding:16px;">Belum ada swap</div>
+            <div style="display:flex;flex-direction:column;gap:6px;">
+                <template x-for="tx in swapHistory" :key="tx.hash">
+                    <div style="display:flex;align-items:center;justify-content:space-between;padding:10px;border-radius:8px;background:#0a0a10;font-size:12px;">
+                        <div style="display:flex;gap:8px;align-items:center;">
+                            <span style="padding:2px 6px;border-radius:4px;font-size:10px;font-weight:700;"
+                                :style="tx.direction==='buy' ? 'background:rgba(0,255,136,.1);color:#00ff88' : 'background:rgba(255,51,102,.1);color:#ff3366'"
+                                x-text="tx.direction==='buy' ? 'BUY' : 'SELL'"></span>
+                            <span class="mono" style="color:#888;" x-text="tx.amount+' → '+tx.output"></span>
+                        </div>
+                        <a :href="'https://basescan.org/tx/'+tx.hash" target="_blank" class="mono" style="color:#555;text-decoration:none;" x-text="tx.hash.slice(0,8)+'...'"></a>
+                    </div>
+                </template>
+            </div>
+        </div>
+    </div>
 
     <!-- Toast -->
-    <div x-show="toast" x-transition class="fixed bottom-6 right-6 bg-[#111118] border rounded-xl p-4 shadow-2xl z-50"
-         :class="toastType==='success'?'border-green-500/50':toastType==='error'?'border-red-500/50':'border-[#0052FF]/50'">
-        <div class="flex items-center gap-3">
-            <span x-text="toastType==='success'?'✅':toastType==='error'?'❌':'ℹ️'"></span>
-            <span class="text-sm" x-text="toast"></span>
-        </div>
+    <div x-show="toast" x-transition style="position:fixed;bottom:24px;right:24px;background:#12121a;border-radius:14px;padding:14px 20px;box-shadow:0 8px 30px rgba(0,0,0,.4);z-index:100;font-size:13px;display:flex;align-items:center;gap:10px;max-width:90vw;"
+        :style="toastType==='success'?'border:1px solid rgba(0,255,136,.3)':toastType==='error'?'border:1px solid rgba(255,51,102,.3)':'border:1px solid rgba(0,82,255,.3)'">
+        <span x-text="toastType==='success'?'✅':toastType==='error'?'❌':'ℹ️'"></span>
+        <span x-text="toast"></span>
     </div>
 </div>
 
 <script>
-const TOKEN_ABI = [
-    "function approve(address,uint256) returns (bool)",
-    "function allowance(address,address) view returns (uint256)",
-    "function balanceOf(address) view returns (uint256)",
-];
-const SWAP_ABI = [
-    "function swapETHForToken() payable",
-    "function swapTokenForETH(uint256)",
-    "function getAmountOut(uint256,bool) view returns (uint256)",
-    "function getPrice() view returns (uint256)",
-    "function reserveETH() view returns (uint256)",
-    "function reserveToken() view returns (uint256)",
-];
+const TOKEN_ABI=["function approve(address,uint256) returns (bool)","function allowance(address,address) view returns (uint256)","function balanceOf(address) view returns (uint256)"];
+const SWAP_ABI=["function swapETHForToken() payable","function swapTokenForETH(uint256)","function getAmountOut(uint256,bool) view returns (uint256)","function getPrice() view returns (uint256)","function reserveETH() view returns (uint256)","function reserveToken() view returns (uint256)"];
 
-function app() {
-    return {
-        tab: 'mine',
-        wallet: null, provider: null, signer: null,
-        // Mining state
-        isMining: false,
-        totalMined: 0, blocksMined: 0,
-        streak: 0, streakMultiplier: 1.0,
-        accuracy: 0, difficultyName: 'Easy',
-        // Question state
-        currentQuestion: '', questionType: '', questionHint: '',
-        userAnswer: '', submitting: false,
-        timeLeft: 30, timeLeftPercent: 100, timeLimit: 30,
-        currentReward: 0.01, currentQuestionId: '',
-        lastResult: null,
-        timerInterval: null, pollInterval: null,
-        // Swap
-        swapType: 'eth', swapAmount: '', swapOutput: '0.0', swapAmountRaw: 0,
-        swapPrice: 0, poolETH: 0, poolToken: 0, slippage: 0.5,
-        ethBalance: '0', bmineBalance: '0', bmineAllowance: 0,
-        swapHistory: [],
-        // Config
-        tokenAddr: null, swapAddr: null, chainId: 8453,
-        toast: '', toastType: 'info',
-        leaderboard: [],
+function app(){return{
+    tab:'mine',wallet:null,provider:null,signer:null,
+    isMining:false,totalMined:0,blocksMined:0,streak:0,streakMultiplier:1.0,accuracy:0,difficultyName:'Easy',
+    currentQuestion:'',questionType:'',questionHint:'',userAnswer:'',submitting:false,
+    timeLeft:30,timeLeftPercent:100,timeLimit:30,currentReward:0.01,currentQuestionId:'',lastResult:null,
+    timerInterval:null,pollInterval:null,
+    swapType:'eth',swapAmount:'',swapOutput:'0.0',swapAmountRaw:0,swapPrice:0,poolETH:0,poolToken:0,slippage:0.5,
+    ethBalance:'0',bmineBalance:'0',bmineAllowance:0,swapHistory:[],
+    tokenAddr:null,swapAddr:null,chainId:8453,toast:'',toastType:'info',leaderboard:[],
 
-        async init() {
-            await this.loadConfig();
-            await this.loadStats();
-            await this.loadLeaderboard();
-            this.pollInterval = setInterval(() => {
-                this.pollStatus();
-                this.loadStats();
-                this.loadLeaderboard();
-                if (this.wallet) this.loadPoolData();
-            }, 5000);
-        },
+    async init(){
+        await this.loadConfig();
+        await this.loadLeaderboard();
+        this.pollInterval=setInterval(()=>{this.loadLeaderboard();if(this.wallet){this.pollStatus();this.loadPoolData();}},5000);
+    },
+    async loadConfig(){try{const r=await fetch('/api/config');const d=await r.json();this.tokenAddr=d.contract_address;this.swapAddr=d.swap_address;this.chainId=d.chain_id||8453;}catch(e){}},
 
-        async loadConfig() {
-            try {
-                const r = await fetch('/api/config');
-                const d = await r.json();
-                this.tokenAddr = d.contract_address;
-                this.swapAddr = d.swap_address;
-                this.chainId = d.chain_id || 8453;
-            } catch(e) { console.error('Config error', e); }
-        },
+    // ─── Wallet ───
+    async connectWallet(){
+        if(!window.ethereum){this.showToast('Install MetaMask!','error');return;}
+        try{
+            const hx='0x'+this.chainId.toString(16);
+            await window.ethereum.request({method:'wallet_switchEthereumChain',params:[{chainId:hx}]}).catch(async()=>{
+                const n={name:'Base',rpc:'https://mainnet.base.org',explorer:'https://basescan.org'};
+                await window.ethereum.request({method:'wallet_addEthereumChain',params:[{chainId:hx,chainName:n.name,rpcUrls:[n.rpc],blockExplorerUrls:[n.explorer],nativeCurrency:{name:'Ether',symbol:'ETH',decimals:18}}]});
+            });
+            this.provider=new ethers.providers.Web3Provider(window.ethereum);
+            await this.provider.send("eth_requestAccounts",[]);
+            this.signer=this.provider.getSigner();
+            this.wallet=await this.signer.getAddress();
+            this.showToast('Connected!','success');
+            await this.pollStatus();
+            await this.loadBalances();
+            await this.loadPoolData();
+        }catch(e){this.showToast('Connection failed','error');}
+    },
 
-        // ─── Wallet ───
-        async connectWallet() {
-            if (!window.ethereum) { this.showToast('Install MetaMask!','error'); return; }
-            try {
-                const hexChain = '0x' + this.chainId.toString(16);
-                await window.ethereum.request({ method:'wallet_switchEthereumChain', params:[{chainId:hexChain}] }).catch(async()=>{
-                    const nets = { 8453:{name:'Base',rpc:'https://mainnet.base.org',explorer:'https://basescan.org'}, 84532:{name:'Base Sepolia',rpc:'https://sepolia.base.org',explorer:'https://sepolia.basescan.org'} };
-                    const n = nets[this.chainId]||nets[8453];
-                    await window.ethereum.request({ method:'wallet_addEthereumChain', params:[{chainId:hexChain,chainName:n.name,rpcUrls:[n.rpc],blockExplorerUrls:[n.explorer],nativeCurrency:{name:'Ether',symbol:'ETH',decimals:18}}] });
-                });
-                this.provider = new ethers.providers.Web3Provider(window.ethereum);
-                await this.provider.send("eth_requestAccounts", []);
-                this.signer = this.provider.getSigner();
-                this.wallet = await this.signer.getAddress();
-                this.showToast('Connected!','success');
-                await this.pollStatus();
-                await this.loadBalances();
-                await this.loadPoolData();
-            } catch(e) { this.showToast('Connection failed','error'); }
-        },
+    // ─── Quiz Mining ───
+    async startMining(){
+        if(!this.wallet)return;
+        const r=await fetch('/api/mine',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({wallet:this.wallet,action:'start'})});
+        const d=await r.json();
+        if(d.question){
+            this.isMining=true;this.currentQuestion=d.question;this.questionType=d.question_type||'general';
+            this.questionHint=d.hint||'';this.timeLimit=d.time_limit||30;this.currentReward=d.reward||0.01;
+            this.currentQuestionId=d.question_id||'';this.streak=d.streak||0;this.streakMultiplier=d.streak_multiplier||1.0;
+            this.userAnswer='';this.lastResult=null;this.startTimer();
+        }
+    },
+    async submitAnswer(){
+        if(!this.wallet||!this.userAnswer.trim()||this.submitting)return;
+        this.submitting=true;this.stopTimer();
+        const r=await fetch('/api/mine',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({wallet:this.wallet,action:'answer',answer:this.userAnswer.trim()})});
+        const d=await r.json();
+        this.lastResult={correct:d.status==='correct',reward:d.reward||0,time_taken:d.time_taken||0,correct_answer:d.correct_answer||''};
+        if(d.status==='correct'){
+            this.totalMined=d.total_mined||this.totalMined;this.streak=d.streak||0;this.streakMultiplier=d.streak_multiplier||1.0;
+            this.difficultyName=d.difficulty_name||'Easy';this.showToast(`+${d.reward.toFixed(6)} SLAM!`,'success');
+        }else{this.streak=0;this.streakMultiplier=1.0;this.difficultyName=d.difficulty_name||'Easy';this.showToast('Salah!','error');}
+        if(d.next_question){
+            this.currentQuestion=d.next_question;this.questionType=d.next_type||'general';this.questionHint=d.hint||'';
+            this.timeLimit=d.next_time_limit||30;this.currentReward=d.next_reward||0.01;this.userAnswer='';this.submitting=false;this.startTimer();
+        }else{this.submitting=false;}
+    },
+    startTimer(){this.stopTimer();this.timeLeft=this.timeLimit;this.timeLeftPercent=100;this.timerInterval=setInterval(()=>{this.timeLeft=Math.max(0,this.timeLeft-1);this.timeLeftPercent=(this.timeLeft/this.timeLimit)*100;if(this.timeLeft<=0){this.stopTimer();this.timeUp();}},1000);},
+    stopTimer(){if(this.timerInterval){clearInterval(this.timerInterval);this.timerInterval=null;}},
+    async timeUp(){if(!this.isMining||this.submitting)return;this.userAnswer='⏱';await this.submitAnswer();},
+    async stopMining(){this.stopTimer();this.isMining=false;if(this.wallet){await fetch('/api/mine',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({wallet:this.wallet,action:'stop'})});}this.currentQuestion='';},
+    async pollStatus(){
+        if(!this.wallet)return;
+        try{const r=await fetch('/api/mine',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({wallet:this.wallet,action:'status'})});const d=await r.json();
+        this.totalMined=d.total_mined||0;this.blocksMined=d.blocks_mined||0;this.streak=d.streak||0;this.accuracy=d.accuracy||0;this.difficultyName=d.difficulty_name||'Easy';this.streakMultiplier=d.streak_multiplier||1.0;
+        if(d.has_active_question&&d.current_question&&!this.isMining){this.isMining=true;this.currentQuestion=d.current_question;this.startTimer();}}catch(e){}
+    },
+    async loadLeaderboard(){try{const r=await fetch('/api/leaderboard');this.leaderboard=await r.json();}catch(e){}},
 
-        // ─── Quiz Mining ───
-        async startMining() {
-            if (!this.wallet) return;
-            const r = await fetch('/api/mine',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({wallet:this.wallet,action:'start'})});
-            const d = await r.json();
-            if (d.question) {
-                this.isMining = true;
-                this.currentQuestion = d.question;
-                this.questionType = d.question_type || 'general';
-                this.questionHint = d.hint || '';
-                this.timeLimit = d.time_limit || 30;
-                this.currentReward = d.reward || 0.01;
-                this.currentQuestionId = d.question_id || '';
-                this.streak = d.streak || 0;
-                this.streakMultiplier = d.streak_multiplier || 1.0;
-                this.userAnswer = '';
-                this.lastResult = null;
-                this.startTimer();
-            }
-        },
+    // ─── Swap ───
+    async loadBalances(){
+        if(!this.provider||!this.wallet)return;
+        try{this.ethBalance=parseFloat(ethers.utils.formatEther(await this.provider.getBalance(this.wallet))).toFixed(4);
+        if(this.tokenAddr&&this.tokenAddr!=='0x0000000000000000000000000000000000000000'){const tk=new ethers.Contract(this.tokenAddr,TOKEN_ABI,this.provider);
+        this.bmineBalance=parseFloat(ethers.utils.formatEther(await tk.balanceOf(this.wallet))).toFixed(4);const al=await tk.allowance(this.wallet,this.swapAddr);this.bmineAllowance=parseFloat(ethers.utils.formatEther(al));}}catch(e){}
+    },
+    async loadPoolData(){
+        if(!this.provider||!this.swapAddr||this.swapAddr==='0x0000000000000000000000000000000000000000')return;
+        try{const sw=new ethers.Contract(this.swapAddr,SWAP_ABI,this.provider);this.poolETH=parseFloat(ethers.utils.formatEther(await sw.reserveETH()));this.poolToken=parseFloat(ethers.utils.formatEther(await sw.reserveToken()));this.swapPrice=this.poolETH>0?this.poolToken/this.poolETH:0;}catch(e){}
+    },
+    async calcSwapOutput(){
+        if(!this.provider||!this.swapAmount||parseFloat(this.swapAmount)<=0){this.swapOutput='0.0';this.swapAmountRaw=0;return;}
+        try{const a=ethers.utils.parseEther(this.swapAmount);this.swapAmountRaw=parseFloat(this.swapAmount);const sw=new ethers.Contract(this.swapAddr,SWAP_ABI,this.provider);const out=await sw.getAmountOut(a,this.swapType==='eth');this.swapOutput=parseFloat(ethers.utils.formatEther(out)).toFixed(6);}catch(e){this.swapOutput='0.0';}
+    },
+    swapDirection(){this.swapType=this.swapType==='eth'?'bmine':'eth';this.swapAmount='';this.swapOutput='0.0';},
+    async approveSwap(){if(!this.wallet)return;try{const tk=new ethers.Contract(this.tokenAddr,TOKEN_ABI,this.signer);const tx=await tk.approve(this.swapAddr,ethers.constants.MaxUint256);this.showToast('Approving...','info');await tx.wait();this.bmineAllowance=1e18;this.showToast('Approved!','success');}catch(e){this.showToast('Failed','error');}},
+    async executeSwap(){
+        if(!this.wallet||!this.swapAmount||parseFloat(this.swapAmount)<=0)return;
+        try{const sw=new ethers.Contract(this.swapAddr,SWAP_ABI,this.signer);let tx;
+        if(this.swapType==='eth'){tx=await sw.swapETHForToken({value:ethers.utils.parseEther(this.swapAmount)});}else{tx=await sw.swapTokenForETH(ethers.utils.parseEther(this.swapAmount));}
+        this.showToast('Swapping...','info');const rc=await tx.wait();this.swapHistory.unshift({hash:rc.transactionHash,direction:this.swapType==='eth'?'buy':'sell',amount:this.swapAmount+(this.swapType==='eth'?' ETH':' SLAM'),output:this.swapOutput+(this.swapType==='eth'?' SLAM':' ETH')});
+        this.showToast('Swapped!','success');this.swapAmount='';this.swapOutput='0.0';await this.loadBalances();await this.loadPoolData();}catch(e){this.showToast('Failed','error');}
+    },
 
-        async submitAnswer() {
-            if (!this.wallet || !this.userAnswer.trim() || this.submitting) return;
-            this.submitting = true;
-            this.stopTimer();
-
-            const r = await fetch('/api/mine',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({wallet:this.wallet,action:'answer',answer:this.userAnswer.trim()})});
-            const d = await r.json();
-
-            this.lastResult = {
-                correct: d.status === 'correct',
-                reward: d.reward || 0,
-                time_taken: d.time_taken || 0,
-                correct_answer: d.correct_answer || '',
-            };
-
-            if (d.status === 'correct') {
-                this.totalMined = d.total_mined || this.totalMined;
-                this.streak = d.streak || 0;
-                this.streakMultiplier = d.streak_multiplier || 1.0;
-                this.difficultyName = d.difficulty_name || 'Easy';
-                this.showToast(`+${d.reward.toFixed(6)} SLAM!`,'success');
-            } else {
-                this.streak = 0;
-                this.streakMultiplier = 1.0;
-                this.difficultyName = d.difficulty_name || 'Easy';
-                this.showToast('Wrong answer!','error');
-            }
-
-            // Load next question
-            if (d.next_question) {
-                this.currentQuestion = d.next_question;
-                this.questionType = d.next_type || 'general';
-                this.questionHint = d.hint || '';
-                this.timeLimit = d.next_time_limit || 30;
-                this.currentReward = d.next_reward || 0.01;
-                this.userAnswer = '';
-                this.submitting = false;
-                this.startTimer();
-            } else {
-                this.submitting = false;
-            }
-        },
-
-        startTimer() {
-            this.stopTimer();
-            this.timeLeft = this.timeLimit;
-            this.timeLeftPercent = 100;
-            this.timerInterval = setInterval(() => {
-                this.timeLeft = Math.max(0, this.timeLeft - 1);
-                this.timeLeftPercent = (this.timeLeft / this.timeLimit) * 100;
-                if (this.timeLeft <= 0) {
-                    this.stopTimer();
-                    this.timeUp();
-                }
-            }, 1000);
-        },
-
-        stopTimer() { if (this.timerInterval) { clearInterval(this.timerInterval); this.timerInterval = null; } },
-
-        async timeUp() {
-            if (!this.isMining || this.submitting) return;
-            // Auto-submit wrong answer
-            this.userAnswer = '⏱';
-            await this.submitAnswer();
-        },
-
-        async stopMining() {
-            this.stopTimer();
-            this.isMining = false;
-            if (this.wallet) {
-                await fetch('/api/mine',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({wallet:this.wallet,action:'stop'})});
-            }
-            this.currentQuestion = '';
-        },
-
-        async pollStatus() {
-            if (!this.wallet) return;
-            try {
-                const r = await fetch('/api/mine',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({wallet:this.wallet,action:'status'})});
-                const d = await r.json();
-                this.totalMined = d.total_mined || 0;
-                this.blocksMined = d.blocks_mined || 0;
-                this.streak = d.streak || 0;
-                this.bestStreak = d.best_streak || 0;
-                this.accuracy = d.accuracy || 0;
-                this.difficultyName = d.difficulty_name || 'Easy';
-                this.streakMultiplier = d.streak_multiplier || 1.0;
-
-                // If server has a question but we don't, show it
-                if (d.has_active_question && d.current_question && !this.isMining) {
-                    this.isMining = true;
-                    this.currentQuestion = d.current_question;
-                    this.startTimer();
-                }
-            } catch(e) {}
-        },
-
-        async loadStats() {
-            try { const r = await fetch('/api/stats'); const d = await r.json(); }
-            catch(e) {}
-        },
-
-        async loadLeaderboard() {
-            try { const r = await fetch('/api/leaderboard'); this.leaderboard = await r.json(); } catch(e) {}
-        },
-
-        // ─── Swap (same as before) ───
-        async loadBalances() {
-            if (!this.provider||!this.wallet) return;
-            try {
-                this.ethBalance = parseFloat(ethers.utils.formatEther(await this.provider.getBalance(this.wallet))).toFixed(4);
-                if (this.tokenAddr && this.tokenAddr !== '0x0000000000000000000000000000000000000000') {
-                    const tk = new ethers.Contract(this.tokenAddr, TOKEN_ABI, this.provider);
-                    this.bmineBalance = parseFloat(ethers.utils.formatEther(await tk.balanceOf(this.wallet))).toFixed(4);
-                    const al = await tk.allowance(this.wallet, this.swapAddr);
-                    this.bmineAllowance = parseFloat(ethers.utils.formatEther(al));
-                }
-            } catch(e) {}
-        },
-        async loadPoolData() {
-            if (!this.provider||!this.swapAddr||this.swapAddr==='0x0000000000000000000000000000000000000000') return;
-            try {
-                const sw = new ethers.Contract(this.swapAddr, SWAP_ABI, this.provider);
-                this.poolETH = parseFloat(ethers.utils.formatEther(await sw.reserveETH()));
-                this.poolToken = parseFloat(ethers.utils.formatEther(await sw.reserveToken()));
-                this.swapPrice = this.poolETH > 0 ? this.poolToken / this.poolETH : 0;
-            } catch(e) {}
-        },
-        async calcSwapOutput() {
-            if (!this.provider||!this.swapAmount||parseFloat(this.swapAmount)<=0) { this.swapOutput='0.0'; this.swapAmountRaw=0; return; }
-            try {
-                const amount = ethers.utils.parseEther(this.swapAmount);
-                this.swapAmountRaw = parseFloat(this.swapAmount);
-                const sw = new ethers.Contract(this.swapAddr, SWAP_ABI, this.provider);
-                const out = await sw.getAmountOut(amount, this.swapType==='eth');
-                this.swapOutput = parseFloat(ethers.utils.formatEther(out)).toFixed(6);
-            } catch(e) { this.swapOutput='0.0'; }
-        },
-        swapDirection() { this.swapType = this.swapType==='eth' ? 'bmine' : 'eth'; this.swapAmount=''; this.swapOutput='0.0'; },
-        async approveSwap() {
-            if (!this.wallet) return;
-            try {
-                const tk = new ethers.Contract(this.tokenAddr, TOKEN_ABI, this.signer);
-                const tx = await tk.approve(this.swapAddr, ethers.constants.MaxUint256);
-                this.showToast('Approving...','info');
-                await tx.wait();
-                this.bmineAllowance = 1e18;
-                this.showToast('Approved!','success');
-            } catch(e) { this.showToast('Approve failed','error'); }
-        },
-        async executeSwap() {
-            if (!this.wallet||!this.swapAmount||parseFloat(this.swapAmount)<=0) return;
-            try {
-                const sw = new ethers.Contract(this.swapAddr, SWAP_ABI, this.signer);
-                let tx;
-                if (this.swapType === 'eth') {
-                    tx = await sw.swapETHForToken({ value: ethers.utils.parseEther(this.swapAmount) });
-                } else {
-                    tx = await sw.swapTokenForETH(ethers.utils.parseEther(this.swapAmount));
-                }
-                this.showToast('Swapping...','info');
-                const receipt = await tx.wait();
-                this.swapHistory.unshift({
-                    hash: receipt.transactionHash, direction: this.swapType==='eth'?'buy':'sell',
-                    amount: this.swapAmount + (this.swapType==='eth'?' ETH':' SLAM'),
-                    output: this.swapOutput + (this.swapType==='eth'?' SLAM':' ETH')
-                });
-                this.showToast('Swapped!','success');
-                this.swapAmount=''; this.swapOutput='0.0';
-                await this.loadBalances();
-                await this.loadPoolData();
-            } catch(e) { this.showToast('Swap failed','error'); }
-        },
-
-        formatNum(n) { return n>1e6? (n/1e6).toFixed(1)+'M' : n>1000?(n/1000).toFixed(1)+'K':n.toFixed(1); },
-        showToast(msg, type='info') { this.toast=msg; this.toastType=type; setTimeout(()=>this.toast='',4000); },
-    }
-}
+    formatNum(n){return n>1e6?(n/1e6).toFixed(1)+'M':n>1000?(n/1000).toFixed(1)+'K':n.toFixed(1);},
+    showToast(msg,type='info'){this.toast=msg;this.toastType=type;setTimeout(()=>this.toast='',4000);},
+}}
 </script>
 </body>
 </html>
