@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BASE MINE — Mining on Base L2</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.ethers.io/lib/ethers-5.7.2.umd.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+        :root {
+            --bg: #0a0a0f;
+            --card: #111118;
+            --border: #1a1a2e;
+            --accent: #0052FF;
+            --accent2: #00d4ff;
+            --green: #00ff88;
+            --red: #ff3366;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: var(--bg);
+            color: #e0e0e0;
+            font-family: 'Space Grotesk', sans-serif;
+            min-height: 100vh;
+        }
+        .mono { font-family: 'JetBrains Mono', monospace; }
+
+        /* Mining animation */
+        @keyframes pulse-glow {
+            0%, 100% { box-shadow: 0 0 20px rgba(0,82,255,0.3); }
+            50% { box-shadow: 0 0 60px rgba(0,82,255,0.6); }
+        }
+        @keyframes hash-scroll {
+            0% { transform: translateY(0); }
+            100% { transform: translateY(-100%); }
+        }
+        @keyframes spin-slow {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        .mining-active {
+            animation: pulse-glow 2s ease-in-out infinite;
+            border-color: var(--green) !important;
+        }
+        .hash-line { animation: hash-scroll 0.5s linear; opacity: 0.3; font-size: 10px; }
+        .rotor { animation: spin-slow 3s linear infinite; }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: var(--bg); }
+        ::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+
+        /* Grid bg */
+        .grid-bg {
+            background-image:
+                linear-gradient(rgba(0,82,255,0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0,82,255,0.03) 1px, transparent 1px);
+            background-size: 40px 40px;
+        }
+    </style>
+</head>
+<body class="grid-bg">
+
+<!-- Alpine.js App -->
+<div x-data="miner()" x-init="init()">
+
+    <!-- Header -->
+    <header class="border-b border-[#1a1a2e] px-6 py-4">
+        <div class="max-w-6xl mx-auto flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-lg bg-[#0052FF] flex items-center justify-center font-bold text-white text-lg">⛏</div>
+                <div>
+                    <h1 class="text-xl font-bold tracking-tight">BASE MINE</h1>
+                    <p class="text-xs text-gray-500 mono">Base L2 Mining Protocol</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-4">
+                <div class="text-right hidden sm:block">
+                    <div class="text-xs text-gray-500">Network</div>
+                    <div class="text-sm font-semibold text-[#0052FF]">Base Mainnet</div>
+                </div>
+                <button
+                    @click="connectWallet()"
+                    class="px-4 py-2 rounded-lg text-sm font-semibold transition-all"
+                    :class="wallet ? 'bg-green-500/10 text-green-400 border border-green-500/30' : 'bg-[#0052FF] text-white hover:bg-[#0040cc]'"
+                >
+                    <span x-text="wallet ? wallet.slice(0,6)+'...'+wallet.slice(-4) : 'Connect Wallet'"></span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="max-w-6xl mx-auto px-4 py-8">
+
+        <!-- Stats Bar -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8">
+            <div class="bg-[#111118] border border-[#1a1a2e] rounded-xl p-4">
+                <div class="text-xs text-gray-500 mb-1">Total Miners</div>
+                <div class="text-2xl font-bold mono" x-text="stats.total_miners || 0"></div>
+            </div>
+            <div class="bg-[#111118] border border-[#1a1a2e] rounded-xl p-4">
+                <div class="text-xs text-gray-500 mb-1">Active Miners</div>
+                <div class="text-2xl font-bold mono text-green-400" x-text="stats.active_miners || 0"></div>
+            </div>
+            <div class="bg-[#111118] border border-[#1a1a2e] rounded-xl p-4">
+                <div class="text-xs text-gray-500 mb-1">Total Mined</div>
+                <div class="text-2xl font-bold mono text-[#00d4ff]" x-text="(stats.total_mined || 0).toFixed(2)"></div>
+            </div>
+            <div class="bg-[#111118] border border-[#1a1a2e] rounded-xl p-4">
+                <div class="text-xs text-gray-500 mb-1">Chain</div>
+                <div class="text-2xl font-bold mono text-[#0052FF]">BASE</div>
+            </div>
+        </div>
+
+        <div class="grid lg:grid-cols-3 gap-6">
+
+            <!-- Mining Panel (left 2 cols) -->
+            <div class="lg:col-span-2 space-y-6">
+
+                <!-- Mining Machine -->
+                <div class="bg-[#111118] border rounded-2xl p-6 transition-all duration-500"
+                     :class="is_mining ? 'border-green-500/50 mining-active' : 'border-[#1a1a2e]'">
+
+                    <div class="flex items-center justify-between mb-6">
+                        <h2 class="text-lg font-bold">Mining Station</h2>
+                        <div class="flex items-center gap-2">
+                            <div class="w-2 h-2 rounded-full" :class="is_mining ? 'bg-green-400 animate-pulse' : 'bg-gray-600'"></div>
+                            <span class="text-sm mono" :class="is_mining ? 'text-green-400' : 'text-gray-500'" x-text="is_mining ? 'ACTIVE' : 'IDLE'"></span>
+                        </div>
+                    </div>
+
+                    <!-- Hash Rate Display -->
+                    <div class="text-center py-8">
+                        <div class="relative inline-block">
+                            <!-- Animated rings -->
+                            <svg class="w-48 h-48" :class="is_mining && 'rotor'" viewBox="0 0 200 200">
+                                <circle cx="100" cy="100" r="90" fill="none" stroke="#1a1a2e" stroke-width="2"/>
+                                <circle cx="100" cy="100" r="90" fill="none"
+                                    :stroke="is_mining ? '#00ff88' : '#333'"
+                                    stroke-width="2"
+                                    stroke-dasharray="20 10"
+                                    stroke-linecap="round"
+                                    class="transition-all duration-500"/>
+                                <circle cx="100" cy="100" r="75" fill="none" stroke="#1a1a2e" stroke-width="1"/>
+                                <circle cx="100" cy="100" r="75" fill="none"
+                                    :stroke="is_mining ? '#0052FF' : '#222'"
+                                    stroke-width="1"
+                                    stroke-dasharray="15 8"
+                                    stroke-linecap="round"/>
+                            </svg>
+                            <!-- Center content -->
+                            <div class="absolute inset-0 flex flex-col items-center justify-center">
+                                <div class="text-3xl font-bold mono" :class="is_mining ? 'text-green-400' : 'text-gray-500'"
+                                     x-text="hashRate.toFixed(1)"></div>
+                                <div class="text-xs text-gray-500">H/s</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Hash Stream (scrolling hashes) -->
+                    <div x-show="is_mining" class="h-20 overflow-hidden mono text-[10px] text-green-500/30 mb-6 bg-black/30 rounded-lg p-2">
+                        <template x-for="h in hashLines" :key="h">
+                            <div class="hash-line" x-text="h"></div>
+                        </template>
+                    </div>
+
+                    <!-- Session Earnings -->
+                    <div class="grid grid-cols-3 gap-4 mb-6">
+                        <div class="bg-black/30 rounded-xl p-4 text-center">
+                            <div class="text-xs text-gray-500 mb-1">Session Earned</div>
+                            <div class="text-xl font-bold mono text-green-400" x-text="sessionEarned.toFixed(6)"></div>
+                        </div>
+                        <div class="bg-black/30 rounded-xl p-4 text-center">
+                            <div class="text-xs text-gray-500 mb-1">Total Mined</div>
+                            <div class="text-xl font-bold mono text-[#00d4ff]" x-text="totalMined.toFixed(6)"></div>
+                        </div>
+                        <div class="bg-black/30 rounded-xl p-4 text-center">
+                            <div class="text-xs text-gray-500 mb-1">Blocks</div>
+                            <div class="text-xl font-bold mono text-[#0052FF]" x-text="blocksMined"></div>
+                        </div>
+                    </div>
+
+                    <!-- Controls -->
+                    <div class="flex gap-3">
+                        <button
+                            @click="toggleMining()"
+                            :disabled="!wallet"
+                            class="flex-1 py-4 rounded-xl font-bold text-lg transition-all"
+                            :class="wallet ? (is_mining ? 'bg-red-500/20 text-red-400 border border-red-500/50 hover:bg-red-500/30' : 'bg-green-500/20 text-green-400 border border-green-500/50 hover:bg-green-500/30') : 'bg-gray-800 text-gray-600 cursor-not-allowed'"
+                            x-text="!wallet ? 'Connect Wallet First' : (is_mining ? '⛏ STOP MINING' : '⛏ START MINING')"
+                        ></button>
+                        <button
+                            @click="claimTokens()"
+                            :disabled="!wallet || totalMined < 1"
+                            class="px-8 py-4 rounded-xl font-bold transition-all"
+                            :class="(wallet && totalMined >= 1) ? 'bg-[#0052FF] text-white hover:bg-[#0040cc]' : 'bg-gray-800 text-gray-600 cursor-not-allowed'"
+                            x-text="totalMined < 1 ? 'Min 1.0 to Claim' : 'Claim Rewards'"
+                        ></button>
+                    </div>
+                </div>
+
+                <!-- TX History -->
+                <div class="bg-[#111118] border border-[#1a1a2e] rounded-2xl p-6">
+                    <h2 class="text-lg font-bold mb-4">Recent Transactions</h2>
+                    <div x-show="txHistory.length === 0" class="text-gray-600 text-sm text-center py-8">
+                        No transactions yet
+                    </div>
+                    <div class="space-y-2">
+                        <template x-for="tx in txHistory" :key="tx.hash">
+                            <div class="bg-black/30 rounded-lg p-3 flex items-center justify-between text-sm">
+                                <div>
+                                    <span class="px-2 py-0.5 rounded text-xs font-bold"
+                                          :class="tx.type === 'claim' ? 'bg-[#0052FF]/20 text-[#0052FF]' : 'bg-green-500/20 text-green-400'"
+                                          x-text="tx.type"></span>
+                                    <span class="ml-2 mono text-gray-400" x-text="tx.amount + ' BASE-MINE'"></span>
+                                </div>
+                                <a :href="'https://basescan.org/tx/' + tx.hash" target="_blank"
+                                   class="text-gray-500 hover:text-white mono text-xs" x-text="tx.hash.slice(0,10)+'...'"></a>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Sidebar -->
+            <div class="space-y-6">
+
+                <!-- Claim Panel -->
+                <div class="bg-[#111118] border border-[#1a1a2e] rounded-2xl p-6">
+                    <h2 class="text-lg font-bold mb-4">Your Stats</h2>
+                    <div class="space-y-3">
+                        <div class="flex justify-between text-sm">
+                            <span class="text-gray-500">Wallet</span>
+                            <span class="mono text-gray-300" x-text="wallet ? wallet.slice(0,8)+'...' : '-'"></span>
+                        </div>
+                        <div class="flex justify-between text-sm">
+                            <span class="text-gray-500">Hash Rate</span>
+                            <span class="mono text-[#00d4ff]" x-text="hashRate.toFixed(1) + ' H/s'"></span>
+                        </div>
+                        <div class="flex justify-between text-sm">
+                            <span class="text-gray-500">Status</span>
+                            <span class="mono" :class="is_mining ? 'text-green-400' : 'text-gray-500'" x-text="is_mining ? 'Mining' : 'Idle'"></span>
+                        </div>
+                        <hr class="border-[#1a1a2e]">
+                        <div class="flex justify-between text-sm font-bold">
+                            <span>Available to Claim</span>
+                            <span class="mono text-green-400" x-text="totalMined.toFixed(4)"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Leaderboard -->
+                <div class="bg-[#111118] border border-[#1a1a2e] rounded-2xl p-6">
+                    <h2 class="text-lg font-bold mb-4">🏆 Leaderboard</h2>
+                    <div class="space-y-2">
+                        <template x-for="(m, i) in leaderboard" :key="m.wallet">
+                            <div class="flex items-center gap-3 text-sm py-2"
+                                 :class="m.wallet === wallet?.toLowerCase() && 'bg-[#0052FF]/10 rounded-lg px-2 -mx-2'">
+                                <span class="w-6 text-center font-bold"
+                                      :class="i === 0 ? 'text-yellow-400' : i === 1 ? 'text-gray-400' : i === 2 ? 'text-orange-400' : 'text-gray-600'"
+                                      x-text="'#' + (i+1)"></span>
+                                <span class="mono text-gray-400 flex-1" x-text="m.wallet.slice(0,6)+'...'+m.wallet.slice(-4)"></span>
+                                <div class="text-right">
+                                    <div class="mono text-[#00d4ff] font-bold" x-text="m.total_mined.toFixed(2)"></div>
+                                    <div x-show="m.is_mining" class="text-[8px] text-green-400">● MINING</div>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+
+                <!-- Token Info -->
+                <div class="bg-[#111118] border border-[#1a1a2e] rounded-2xl p-6">
+                    <h2 class="text-lg font-bold mb-3">BASE-MINE Token</h2>
+                    <p class="text-xs text-gray-500 mb-4">Mine tokens on Base L2. Your hash rate is determined by your wallet address entropy. Connect, mine, claim!</p>
+                    <div class="space-y-2 text-sm">
+                        <div class="flex justify-between">
+                            <span class="text-gray-500">Network</span>
+                            <span class="text-white font-semibold">Base (8453)</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-500">Earning Rate</span>
+                            <span class="mono text-white">0.001 tokens/H·s</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-500">Min Claim</span>
+                            <span class="mono text-white">1.0 tokens</span>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+    <!-- Toast -->
+    <div x-show="toast" x-transition class="fixed bottom-6 right-6 bg-[#111118] border rounded-xl p-4 shadow-2xl z-50"
+         :class="toastType === 'success' ? 'border-green-500/50' : toastType === 'error' ? 'border-red-500/50' : 'border-[#0052FF]/50'">
+        <div class="flex items-center gap-3">
+            <span x-text="toastType === 'success' ? '✅' : toastType === 'error' ? '❌' : 'ℹ️'"></span>
+            <span class="text-sm" x-text="toast"></span>
+        </div>
+    </div>
+
+</div>
+
+<script>
+function miner() {
+    return {
+        // Wallet
+        wallet: null,
+        provider: null,
+        signer: null,
+
+        // Mining state
+        is_mining: false,
+        hashRate: 0,
+        sessionEarned: 0,
+        totalMined: 0,
+        blocksMined: 0,
+        sessionStart: 0,
+
+        // UI
+        stats: {},
+        leaderboard: [],
+        txHistory: [],
+        hashLines: [],
+        toast: '',
+        toastType: 'info',
+        pollInterval: null,
+        hashInterval: null,
+
+        async init() {
+            await this.loadStats();
+            await this.loadLeaderboard();
+            this.pollInterval = setInterval(() => {
+                this.pollMiningStatus();
+                this.loadStats();
+                this.loadLeaderboard();
+            }, 3000);
+            this.generateHashStream();
+        },
+
+        async connectWallet() {
+            if (!window.ethereum) {
+                this.showToast('Install MetaMask or Coinbase Wallet!', 'error');
+                return;
+            }
+            try {
+                // Request Base chain
+                await window.ethereum.request({
+                    method: 'wallet_switchEthereumChain',
+                    params: [{ chainId: '0x2105' }] // Base 8453
+                }).catch(async () => {
+                    await window.ethereum.request({
+                        method: 'wallet_addEthereumChain',
+                        params: [{
+                            chainId: '0x2105',
+                            chainName: 'Base',
+                            rpcUrls: ['https://mainnet.base.org'],
+                            blockExplorerUrls: ['https://basescan.org'],
+                            nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 }
+                        }]
+                    });
+                });
+
+                this.provider = new ethers.providers.Web3Provider(window.ethereum);
+                await this.provider.send("eth_requestAccounts", []);
+                this.signer = this.provider.getSigner();
+                this.wallet = await this.signer.getAddress();
+
+                this.showToast('Wallet connected!', 'success');
+
+                // Load mining status
+                await this.pollMiningStatus();
+            } catch (err) {
+                this.showToast('Connection failed: ' + err.message, 'error');
+            }
+        },
+
+        async toggleMining() {
+            if (!this.wallet) return;
+            try {
+                const action = this.is_mining ? 'stop' : 'start';
+                const res = await fetch('/api/mine', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ wallet: this.wallet, action })
+                });
+                const data = await res.json();
+
+                if (data.status === 'mining_started') {
+                    this.is_mining = true;
+                    this.hashRate = data.hash_rate;
+                    this.sessionStart = Date.now() / 1000;
+                    this.startMiningTimer();
+                    this.showToast(`Mining started at ${data.hash_rate} H/s!`, 'success');
+                } else if (data.status === 'mining_stopped') {
+                    this.is_mining = false;
+                    this.hashRate = 0;
+                    this.sessionEarned = 0;
+                    this.totalMined = data.total;
+                    this.stopMiningTimer();
+                    this.showToast(`Stopped! Earned ${data.earned.toFixed(6)} tokens`, 'success');
+                }
+            } catch (err) {
+                this.showToast('Mining error: ' + err.message, 'error');
+            }
+        },
+
+        startMiningTimer() {
+            this.stopMiningTimer();
+            this.hashInterval = setInterval(() => {
+                if (this.is_mining && this.sessionStart > 0) {
+                    const elapsed = Date.now() / 1000 - this.sessionStart;
+                    this.sessionEarned = elapsed * this.hashRate * 0.001;
+                }
+            }, 100);
+        },
+
+        stopMiningTimer() {
+            if (this.hashInterval) {
+                clearInterval(this.hashInterval);
+                this.hashInterval = null;
+            }
+        },
+
+        async pollMiningStatus() {
+            if (!this.wallet) return;
+            try {
+                const res = await fetch('/api/mine', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ wallet: this.wallet, action: 'status' })
+                });
+                const data = await res.json();
+
+                this.totalMined = data.total_mined || 0;
+                this.blocksMined = data.blocks_mined || 0;
+                this.hashRate = data.hash_rate || 0;
+
+                if (data.is_mining) {
+                    this.is_mining = true;
+                    this.sessionStart = data.session_start || (Date.now() / 1000);
+                    const elapsed = Date.now() / 1000 - this.sessionStart;
+                    this.sessionEarned = elapsed * this.hashRate * 0.001;
+                    this.startMiningTimer();
+                } else {
+                    this.is_mining = false;
+                    this.stopMiningTimer();
+                }
+            } catch {}
+        },
+
+        async claimTokens() {
+            if (!this.wallet || this.totalMined < 1) return;
+            try {
+                const res = await fetch('/api/claim', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ wallet: this.wallet })
+                });
+                const data = await res.json();
+
+                if (data.status === 'claimed') {
+                    this.txHistory.unshift({ hash: data.tx_hash, amount: data.amount, type: 'claim' });
+                    this.totalMined = 0;
+                    this.showToast(data.message, 'success');
+                }
+            } catch (err) {
+                this.showToast('Claim failed: ' + err.message, 'error');
+            }
+        },
+
+        async loadStats() {
+            try {
+                const res = await fetch('/api/stats');
+                this.stats = await res.json();
+            } catch {}
+        },
+
+        async loadLeaderboard() {
+            try {
+                const res = await fetch('/api/leaderboard');
+                this.leaderboard = await res.json();
+            } catch {}
+        },
+
+        generateHashStream() {
+            setInterval(() => {
+                if (this.is_mining) {
+                    const hex = '0x' + [...Array(64)].map(() => '0123456789abcdef'[Math.floor(Math.random()*16)]).join('');
+                    this.hashLines.unshift(hex);
+                    if (this.hashLines.length > 10) this.hashLines.pop();
+                }
+            }, 300);
+        },
+
+        showToast(msg, type = 'info') {
+            this.toast = msg;
+            this.toastType = type;
+            setTimeout(() => this.toast = '', 4000);
+        }
+    }
+}
+</script>
+
+</body>
+</html>
