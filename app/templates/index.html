@@ -315,6 +315,53 @@
         <span x-text="toastType==='success'?'✅':toastType==='error'?'❌':'ℹ️'"></span>
         <span x-text="toast"></span>
     </div>
+
+    <!-- Wallet Connect Modal -->
+    <div x-show="showWalletModal" x-transition style="position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px;">
+        <div style="background:#12121a;border:1px solid #2a2a40;border-radius:20px;width:100%;max-width:340px;padding:24px;" @click.away="showWalletModal=false">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+                <h3 style="font-size:18px;font-weight:700;">Connect Wallet</h3>
+                <button @click="showWalletModal=false" style="background:none;border:none;color:#666;font-size:20px;cursor:pointer;">✕</button>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:10px;">
+                <!-- MetaMask -->
+                <button @click="connectMetaMask()" style="display:flex;align-items:center;gap:14px;padding:14px;border-radius:14px;background:#1a1a2e;border:1px solid #2a2a40;cursor:pointer;transition:all .2s;" onmouseover="this.style.borderColor='#f6851b'" onmouseout="this.style.borderColor='#2a2a40'">
+                    <span style="font-size:28px;">🦊</span>
+                    <div>
+                        <div style="font-weight:600;font-size:14px;color:#fff;">MetaMask</div>
+                        <div style="font-size:11px;color:#666;">Browser extension or mobile app</div>
+                    </div>
+                </button>
+                <!-- Coinbase Wallet -->
+                <button @click="connectCoinbase()" style="display:flex;align-items:center;gap:14px;padding:14px;border-radius:14px;background:#1a1a2e;border:1px solid #2a2a40;cursor:pointer;transition:all .2s;" onmouseover="this.style.borderColor='#0052FF'" onmouseout="this.style.borderColor='#2a2a40'">
+                    <span style="font-size:28px;">🔵</span>
+                    <div>
+                        <div style="font-weight:600;font-size:14px;color:#fff;">Coinbase Wallet</div>
+                        <div style="font-size:11px;color:#666;">Mobile wallet or extension</div>
+                    </div>
+                </button>
+                <!-- WalletConnect (QR) -->
+                <button @click="connectWalletConnect()" style="display:flex;align-items:center;gap:14px;padding:14px;border-radius:14px;background:#1a1a2e;border:1px solid #2a2a40;cursor:pointer;transition:all .2s;" onmouseover="this.style.borderColor='#3b99fc'" onmouseout="this.style.borderColor='#2a2a40'">
+                    <span style="font-size:28px;">📱</span>
+                    <div>
+                        <div style="font-weight:600;font-size:14px;color:#fff;">WalletConnect</div>
+                        <div style="font-size:11px;color:#666;">Scan QR — Trust, Rainbow, etc.</div>
+                    </div>
+                </button>
+            </div>
+            <p style="text-align:center;font-size:11px;color:#555;margin-top:16px;">By connecting you agree to the Terms of Service</p>
+        </div>
+    </div>
+
+    <!-- WalletConnect QR Modal -->
+    <div x-show="showWCModal" x-transition style="position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:201;display:flex;align-items:center;justify-content:center;padding:20px;">
+        <div style="background:#12121a;border:1px solid #2a2a40;border-radius:20px;width:100%;max-width:340px;padding:24px;text-align:center;">
+            <h3 style="font-size:18px;font-weight:700;margin-bottom:12px;">Scan QR Code</h3>
+            <p style="font-size:12px;color:#666;margin-bottom:16px;">Open your wallet app and scan this QR code</p>
+            <div id="wc-qr" style="display:flex;justify-content:center;margin-bottom:16px;"></div>
+            <button @click="showWCModal=false;wcCleanup()" style="background:#1a1a2e;border:1px solid #2a2a40;color:#888;padding:10px 20px;border-radius:10px;cursor:pointer;font-size:13px;">Cancel</button>
+        </div>
+    </div>
 </div>
 
 <script>
@@ -323,6 +370,7 @@ const SWAP_ABI=["function swapETHForToken() payable","function swapTokenForETH(u
 
 function app(){return{
     tab:'mine',wallet:null,provider:null,signer:null,
+    showWalletModal:false,showWCModal:false,wcProvider:null,
     isMining:false,totalMined:0,blocksMined:0,streak:0,streakMultiplier:1.0,accuracy:0,difficultyName:'Easy',
     currentQuestion:'',questionType:'',questionHint:'',userAnswer:'',submitting:false,
     timeLeft:30,timeLeftPercent:100,timeLimit:30,currentReward:0.01,currentQuestionId:'',lastResult:null,
@@ -340,22 +388,116 @@ function app(){return{
 
     // ─── Wallet ───
     async connectWallet(){
-        if(!window.ethereum){this.showToast('Install MetaMask!','error');return;}
+        this.showWalletModal=true;
+    },
+
+    async connectMetaMask(){
+        this.showWalletModal=false;
+        if(!window.ethereum||!window.ethereum.isMetaMask){
+            // On mobile: try to open MetaMask app
+            if(/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)){
+                window.location.href='https://metamask.app.link/dapp/'+window.location.hostname+window.location.pathname;
+            }else{
+                this.showToast('Install MetaMask extension','error');
+            }
+            return;
+        }
+        await this._connectProvider(window.ethereum);
+    },
+
+    async connectCoinbase(){
+        this.showWalletModal=false;
+        if(window.ethereum&&window.ethereum.isCoinbaseWallet){
+            return this._connectProvider(window.ethereum);
+        }
+        // Try Coinbase Wallet SDK (inject provider via SDK)
+        if(!window.__coinbaseWalletSDK){
+            this.showToast('Opening Coinbase Wallet...','info');
+            window.open('https://go.cb-w.com/dapp?cb_url='+encodeURIComponent(window.location.href),'_blank');
+            return;
+        }
+        const provider=window.__coinbaseWalletSDK.makeWeb3Provider('https://mainnet.base.org',this.chainId);
+        await this._connectProvider(provider);
+    },
+
+    async connectWalletConnect(){
+        this.showWalletModal=false;
+        this.showWCModal=true;
+        try{
+            // Load WalletConnect Modal UI
+            await this._loadScript('https://unpkg.com/@walletconnect/modal@2/dist/index.umd.js');
+            // Load SignClient
+            await this._loadScript('https://unpkg.com/@walletconnect/sign-client@2/dist/index.umd.js');
+            const projectId='YOUR_WALLETCONNECT_PROJECT_ID'; // Replace with your WC projectId
+            const signClient=await window.WalletConnectSignClient.init({projectId:projectId,metadata:{name:'Salamander Mine',description:'Quiz Mining on Base L2',url:window.location.origin,icons:['https://raw.githubusercontent.com/nickvdyck/web3-icons/main/icons/token.svg']}});
+            const {uri,approval}=await signClient.connect({requiredNamespaces:{eip155:{methods:['eth_sendTransaction','personal_sign'],chains:['eip155:'+this.chainId],events:['accountsChanged','chainChanged']}}});
+            if(uri){
+                // Generate QR code
+                const qrEl=document.getElementById('wc-qr');
+                qrEl.innerHTML='';
+                await this._loadScript('https://unpkg.com/qrcode@1/build/qrcode.min.js');
+                const canvas=document.createElement('canvas');
+                qrEl.appendChild(canvas);
+                await window.QRCode.toCanvas(canvas,uri,{width:200,margin:2,background:'#12121a',color:'#ffffff'});
+                // Also offer deep link
+                const link=document.createElement('a');
+                link.href='https://walletconnect.com/ul?wc='+encodeURIComponent(uri);
+                link.target='_blank';
+                link.style.cssText='display:block;margin-top:10px;font-size:12px;color:#3b99fc;text-decoration:none;';
+                link.textContent='Or open WalletConnect ↗';
+                qrEl.appendChild(link);
+            }
+            const session=await approval();
+            this.showWCModal=false;
+            // Create ethers provider from WC session
+            const wcProvider=new ethers.providers.Web3Provider({
+                request:async({method,params})=>{
+                    const result=await signClient.request({topic:session.topic,chainId:'eip155:'+this.chainId,request:{method,params}});
+                    return result;
+                }
+            });
+            this.wcProvider=wcProvider;
+            this.provider=wcProvider;
+            this.signer=wcProvider.getSigner();
+            this.wallet=await this.signer.getAddress();
+            this.showToast('Connected via WalletConnect!','success');
+            await this.pollStatus();
+            await this.loadBalances();
+            await this.loadPoolData();
+        }catch(e){
+            this.showWCModal=false;
+            this.showToast('WalletConnect failed','error');
+        }
+    },
+
+    wcCleanup(){this.wcProvider=null;},
+
+    async _loadScript(src){
+        if(document.querySelector('script[src="'+src+'"]'))return;
+        return new Promise((res,rej)=>{
+            const s=document.createElement('script');
+            s.src=src;s.onload=res;s.onerror=rej;
+            document.head.appendChild(s);
+        });
+    },
+
+    async _connectProvider(ethProvider){
         try{
             const hx='0x'+this.chainId.toString(16);
-            await window.ethereum.request({method:'wallet_switchEthereumChain',params:[{chainId:hx}]}).catch(async()=>{
+            const p=new ethers.providers.Web3Provider(ethProvider);
+            await p.send("eth_requestAccounts",[]);
+            await ethProvider.request({method:'wallet_switchEthereumChain',params:[{chainId:hx}]}).catch(async()=>{
                 const n={name:'Base',rpc:'https://mainnet.base.org',explorer:'https://basescan.org'};
-                await window.ethereum.request({method:'wallet_addEthereumChain',params:[{chainId:hx,chainName:n.name,rpcUrls:[n.rpc],blockExplorerUrls:[n.explorer],nativeCurrency:{name:'Ether',symbol:'ETH',decimals:18}}]});
+                await ethProvider.request({method:'wallet_addEthereumChain',params:[{chainId:hx,chainName:n.name,rpcUrls:[n.rpc],blockExplorerUrls:[n.explorer],nativeCurrency:{name:'Ether',symbol:'ETH',decimals:18}}]});
             });
-            this.provider=new ethers.providers.Web3Provider(window.ethereum);
-            await this.provider.send("eth_requestAccounts",[]);
-            this.signer=this.provider.getSigner();
+            this.provider=p;
+            this.signer=p.getSigner();
             this.wallet=await this.signer.getAddress();
             this.showToast('Connected!','success');
             await this.pollStatus();
             await this.loadBalances();
             await this.loadPoolData();
-        }catch(e){this.showToast('Connection failed','error');}
+        }catch(e){this.showToast('Connection failed: '+e.message,'error');}
     },
 
     // ─── Quiz Mining ───
