@@ -405,7 +405,7 @@ function app() {
                 await window.ethereum.request({ method:'wallet_switchEthereumChain', params:[{chainId:hexChain}] }).catch(async()=>{
                     const nets = { 8453:{name:'Base',rpc:'https://mainnet.base.org',explorer:'https://basescan.org'}, 84532:{name:'Base Sepolia',rpc:'https://sepolia.base.org',explorer:'https://sepolia.basescan.org'} };
                     const n = nets[this.chainId]||nets[8453];
-                    await window.ethereum.request({ method:'wallet_addEthereumChain', params:[{chainId:hexChain,chainName:n.name,rpcUrls:[n.rpc],blockExplorerUrls:[n.explorer],nativeCurrency:{name:'Ether',symbol:'ETH',decimals:18}] });
+                    await window.ethereum.request({ method:'wallet_addEthereumChain', params:[{chainId:hexChain,chainName:n.name,rpcUrls:[n.rpc],blockExplorerUrls:[n.explorer],nativeCurrency:{name:'Ether',symbol:'ETH',decimals:18}}] });
                 });
                 this.provider = new ethers.providers.Web3Provider(window.ethereum);
                 await this.provider.send("eth_requestAccounts", []);
