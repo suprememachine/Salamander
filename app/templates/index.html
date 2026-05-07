@@ -123,11 +123,11 @@
                 <div style="font-size:52px;margin-bottom:12px;">🧠</div>
                 <h2 style="font-size:22px;font-weight:700;margin-bottom:8px;">Quiz Mining</h2>
                 <p style="color:#666;font-size:14px;line-height:1.6;margin-bottom:24px;">
-                    Jawab pertanyaan untuk mining SLAM tokens.<br>
-                    Jawab cepat = lebih banyak reward. Streak = multiplier!
+                    Answer questions to mine SLAM tokens.<br>
+                    Faster answers = more rewards. Streaks = multipliers!
                 </p>
                 <button @click="startMining()" :disabled="!wallet" class="btn-start" style="width:100%;"
-                    :style="!wallet ? 'opacity:.4;cursor:not-allowed' : ''" x-text="wallet ? '🧠 START MINING' : '🔗 Connect Wallet dulu'"></button>
+                    :style="!wallet ? 'opacity:.4;cursor:not-allowed' : ''" x-text="wallet ? '🧠 START MINING' : '🔗 Connect Wallet First'"></button>
             </div>
 
             <!-- ACTIVE QUESTION -->
@@ -160,13 +160,13 @@
                 <div x-show="lastResult" style="border-radius:12px;padding:12px;margin-bottom:14px;font-size:13px;display:flex;align-items:center;gap:8px;animation:slide-up .3s;"
                     :style="lastResult?.correct ? 'background:rgba(0,255,136,.08);border:1px solid rgba(0,255,136,.2)' : 'background:rgba(255,51,102,.08);border:1px solid rgba(255,51,102,.2)'">
                     <span x-text="lastResult?.correct ? '✅' : '❌'"></span>
-                    <span x-text="lastResult?.correct ? '+' + lastResult?.reward?.toFixed(6) + ' SLAM' : 'Jawaban: ' + lastResult?.correct_answer"></span>
+                    <span x-text="lastResult?.correct ? '+' + lastResult?.reward?.toFixed(6) + ' SLAM' : 'Answer: ' + lastResult?.correct_answer"></span>
                     <span class="mono" style="color:#666;margin-left:auto;" x-text="lastResult?.time_taken?.toFixed(1)+'s'"></span>
                 </div>
 
                 <!-- Answer Input -->
                 <div style="display:flex;gap:10px;" @keydown.enter="submitAnswer()">
-                    <input type="text" x-model="userAnswer" class="quiz-input" style="flex:1;" placeholder="Ketik jawaban..." :disabled="submitting">
+                    <input type="text" x-model="userAnswer" class="quiz-input" style="flex:1;" placeholder="Type your answer..." :disabled="submitting">
                     <button @click="submitAnswer()" class="btn-submit" :disabled="submitting || !userAnswer.trim()"
                         :style="(!userAnswer.trim()||submitting) ? 'opacity:.4;cursor:not-allowed' : ''">
                         <span x-text="submitting ? '...' : '✓'"></span>
@@ -192,9 +192,9 @@
                 <div style="display:flex;justify-content:space-between;font-size:13px;"><span style="color:#888;">Streak ×3 max</span><span class="mono" style="color:#ffaa00;">×1.0→×3.0</span></div>
                 <hr style="border:none;border-top:1px solid #1a1a2e;margin:4px 0;">
                 <div style="font-size:11px;color:#555;line-height:1.6;">
-                    • 5 benar berturut → difficulty naik<br>
-                    • Salah → streak reset, difficulty turun<br>
-                    • Semakin cepat jawab = semakin banyak reward
+                    • 5 correct in a row → difficulty goes up<br>
+                    • Wrong → streak reset, difficulty goes down<br>
+                    • Faster answer = more reward
                 </div>
             </div>
         </div>
@@ -202,7 +202,7 @@
         <!-- Leaderboard -->
         <div class="glass-card animate-in animate-in-4" style="margin-bottom:40px;">
             <h3 style="font-size:16px;font-weight:700;margin-bottom:14px;">🏆 Leaderboard</h3>
-            <div x-show="leaderboard.length===0" style="text-align:center;color:#444;font-size:13px;padding:20px;">Belum ada data</div>
+            <div x-show="leaderboard.length===0" style="text-align:center;color:#444;font-size:13px;padding:20px;">No data yet</div>
             <div style="display:flex;flex-direction:column;gap:6px;">
                 <template x-for="(m,i) in leaderboard" :key="m.wallet">
                     <div style="display:flex;align-items:center;gap:10px;padding:10px;border-radius:10px;font-size:13px;"
@@ -292,7 +292,7 @@
         <!-- Swap History -->
         <div class="glass-card" style="margin-top:16px;">
             <h3 style="font-size:14px;font-weight:600;margin-bottom:12px;">History</h3>
-            <div x-show="swapHistory.length===0" style="text-align:center;color:#444;font-size:13px;padding:16px;">Belum ada swap</div>
+            <div x-show="swapHistory.length===0" style="text-align:center;color:#444;font-size:13px;padding:16px;">No swaps yet</div>
             <div style="display:flex;flex-direction:column;gap:6px;">
                 <template x-for="tx in swapHistory" :key="tx.hash">
                     <div style="display:flex;align-items:center;justify-content:space-between;padding:10px;border-radius:8px;background:#0a0a10;font-size:12px;">
@@ -379,7 +379,7 @@ function app(){return{
         if(d.status==='correct'){
             this.totalMined=d.total_mined||this.totalMined;this.streak=d.streak||0;this.streakMultiplier=d.streak_multiplier||1.0;
             this.difficultyName=d.difficulty_name||'Easy';this.showToast(`+${d.reward.toFixed(6)} SLAM!`,'success');
-        }else{this.streak=0;this.streakMultiplier=1.0;this.difficultyName=d.difficulty_name||'Easy';this.showToast('Salah!','error');}
+        }else{this.streak=0;this.streakMultiplier=1.0;this.difficultyName=d.difficulty_name||'Easy';this.showToast('Wrong!','error');}
         if(d.next_question){
             this.currentQuestion=d.next_question;this.questionType=d.next_type||'general';this.questionHint=d.hint||'';
             this.timeLimit=d.next_time_limit||30;this.currentReward=d.next_reward||0.01;this.userAnswer='';this.submitting=false;this.startTimer();
