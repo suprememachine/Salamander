@@ -105,7 +105,7 @@ def deploy():
     print(f"💰 Balance: {w3.from_wei(balance, 'ether')} ETH")
 
     # ── Deploy BaseMineToken ──
-    print("\n📝 Deploying BaseMineToken (BMINE)...")
+    print("\n📝 Deploying BaseMineToken (SLAM)...")
     token_abi, token_bytecode = load_artifacts(build_dir, "BaseMineToken")
     TokenContract = w3.eth.contract(abi=token_abi, bytecode=token_bytecode)
 

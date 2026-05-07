@@ -3,12 +3,12 @@ pragma solidity ^0.8.24;
 
 /**
  * @title BaseMineToken (BASEMINE)
- * @dev ERC-20 mining reward token for Base Mining platform
+ * @dev ERC-20 mining reward token for Salamander Mining platform
  *      Minted by mining rewards, traded via AMM on Base L2
  */
 contract BaseMineToken {
-    string public constant name = "Base Mine Token";
-    string public constant symbol = "BMINE";
+    string public constant name = "Salamander Token";
+    string public constant symbol = "SLAM";
     uint8 public constant decimals = 18;
     uint256 public totalSupply;
 

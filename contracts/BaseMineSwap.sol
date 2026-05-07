@@ -3,11 +3,11 @@ pragma solidity ^0.8.24;
 
 /**
  * @title BaseMineSwap
- * @dev Simple AMM DEX for BMINE/ETH pair (constant product x*y=k)
- *      Liquidity providers deposit BMINE + ETH, earn 0.3% swap fees
+ * @dev Simple AMM DEX for SLAM/ETH pair (constant product x*y=k)
+ *      Liquidity providers deposit SLAM + ETH, earn 0.3% swap fees
  */
 contract BaseMineSwap {
-    address public token;       // BMINE token address
+    address public token;       // SLAM token address
     address public owner;
 
     uint256 public reserveETH;
@@ -33,7 +33,7 @@ contract BaseMineSwap {
     }
 
     /**
-     * @dev Add liquidity (ETH + BMINE). First deposit sets the price.
+     * @dev Add liquidity (ETH + SLAM). First deposit sets the price.
      *      Returns amount of LP tokens minted.
      */
     function addLiquidity() external payable {
@@ -43,16 +43,16 @@ contract BaseMineSwap {
         uint256 tokenAmount;
         if (totalLiquidity == 0) {
             // First deposit - caller must approve tokens first
-            // msg.value is ETH, we need matching BMINE tokens
-            // For initial pool: require msg.value worth of BMINE
-            tokenAmount = msg.value * 1000; // Initial ratio: 1 ETH = 1000 BMINE
+            // msg.value is ETH, we need matching SLAM tokens
+            // For initial pool: require msg.value worth of SLAM
+            tokenAmount = msg.value * 1000; // Initial ratio: 1 ETH = 1000 SLAM
             require(tokenAmount > 0, "Invalid token amount");
         } else {
             // Proportional to existing reserves
             tokenAmount = (msg.value * reserveToken) / reserveETH;
         }
 
-        // Transfer BMINE from caller
+        // Transfer SLAM from caller
         bool sent = IERC20(token).transferFrom(msg.sender, address(this), tokenAmount);
         require(sent, "Token transfer failed");
 
@@ -73,7 +73,7 @@ contract BaseMineSwap {
     }
 
     /**
-     * @dev Remove liquidity. Burns LP tokens, returns ETH + BMINE.
+     * @dev Remove liquidity. Burns LP tokens, returns ETH + SLAM.
      */
     function removeLiquidity(uint256 liquidityAmount) external {
         require(liquidityAmount > 0, "Amount must be > 0");
@@ -87,7 +87,7 @@ contract BaseMineSwap {
         reserveETH -= ethAmount;
         reserveToken -= tokenAmount;
 
-        // Transfer ETH and BMINE back
+        // Transfer ETH and SLAM back
         (bool sent,) = payable(msg.sender).call{value: ethAmount}("");
         require(sent, "ETH transfer failed");
         IERC20(token).transfer(msg.sender, tokenAmount);
@@ -96,7 +96,7 @@ contract BaseMineSwap {
     }
 
     /**
-     * @dev Swap ETH for BMINE (BUY)
+     * @dev Swap ETH for SLAM (BUY)
      */
     function swapETHForToken() external payable {
         require(msg.value > 0, "Must send ETH");
@@ -110,20 +110,20 @@ contract BaseMineSwap {
         reserveETH += msg.value;
         reserveToken -= amountOut;
 
-        // Transfer BMINE to buyer
+        // Transfer SLAM to buyer
         IERC20(token).transfer(msg.sender, amountOut);
 
         emit Swap(msg.sender, true, msg.value, amountOut);
     }
 
     /**
-     * @dev Swap BMINE for ETH (SELL)
+     * @dev Swap SLAM for ETH (SELL)
      */
     function swapTokenForETH(uint256 tokenAmount) external {
         require(tokenAmount > 0, "Amount must be > 0");
         require(reserveETH > 0 && reserveToken > 0, "No liquidity");
 
-        // Transfer BMINE to contract
+        // Transfer SLAM to contract
         IERC20(token).transferFrom(msg.sender, address(this), tokenAmount);
 
         uint256 amountInWithFee = tokenAmount * (FEE_DENOMINATOR - FEE_NUMERATOR);
@@ -142,7 +142,7 @@ contract BaseMineSwap {
     }
 
     /**
-     * @dev Get expected output amount (BUY BMINE with ETH)
+     * @dev Get expected output amount (BUY SLAM with ETH)
      */
     function getAmountOut(uint256 amountIn, bool isBuy) external view returns (uint256) {
         if (reserveETH == 0 || reserveToken == 0) return 0;
@@ -157,7 +157,7 @@ contract BaseMineSwap {
     }
 
     /**
-     * @dev Get current BMINE/ETH price
+     * @dev Get current SLAM/ETH price
      */
     function getPrice() external view returns (uint256) {
         if (reserveETH == 0) return 0;

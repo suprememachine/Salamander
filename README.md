@@ -2,7 +2,7 @@
 
 Web mining platform on Base (Ethereum L2). Connect wallet, mine tokens, claim rewards.
 
-![Base Mining](https://img.shields.io/badge/Base-8453-blue)
+![Salamander Mining](https://img.shields.io/badge/Base-8453-blue)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.115-green)
 ![Alpine.js](https://img.shields.io/badge/Alpine.js-3.x-purple)
 
