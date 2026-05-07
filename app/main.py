@@ -106,9 +106,11 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Salamander Mining", version="2.0.0", lifespan=lifespan)
 
-# ─── Static files ───
+# ─── Static files (optional) ───
 
-app.mount("/static", StaticFiles(directory="app/static"), name="static")
+static_dir = Path("app/static")
+if static_dir.exists():
+    app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
 # ─── Pydantic models ───
 
