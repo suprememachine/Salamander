@@ -22,6 +22,7 @@ DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./data/mining.db")
 SECRET_KEY = os.getenv("SECRET_KEY", secrets.token_hex(32))
 RPC_URL = os.getenv("RPC_URL", "https://mainnet.base.org")
 CONTRACT_ADDRESS = os.getenv("CONTRACT_ADDRESS", "0x0000000000000000000000000000000000000000")
+SWAP_ADDRESS = os.getenv("SWAP_ADDRESS", "0x0000000000000000000000000000000000000000")
 CHAIN_ID = int(os.getenv("CHAIN_ID", "8453"))  # Base mainnet
 
 # DB setup with graceful fallback
@@ -101,9 +102,23 @@ async def health():
 
 @app.get("/api/config")
 async def get_config():
+    # Load deployed addresses if contracts.json exists
+    contracts_file = Path("contracts.json")
+    if contracts_file.exists():
+        try:
+            deployed = json.loads(contracts_file.read_text())
+            return {
+                "rpc_url": deployed.get("rpc_url", RPC_URL),
+                "contract_address": deployed.get("token_address", CONTRACT_ADDRESS),
+                "swap_address": deployed.get("swap_address", SWAP_ADDRESS),
+                "chain_id": deployed.get("chain", CHAIN_ID),
+            }
+        except:
+            pass
     return {
         "rpc_url": RPC_URL,
         "contract_address": CONTRACT_ADDRESS,
+        "swap_address": SWAP_ADDRESS,
         "chain_id": CHAIN_ID,
     }
 
